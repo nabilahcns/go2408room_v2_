@@ -1,38 +1,2237 @@
 <!doctype html>
 <html lang="id">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
 <title>2408 Room Store - Since 2015</title>
+
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#244e7c;background:#fff}header img{width:100%;display:block;max-height:360px;object-fit:cover}.nav{padding:18px 7%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e4eef8}.brand{font-size:22px;font-weight:900}.admin-link{color:#2167bd;text-decoration:none;font-weight:800}main{max-width:1200px;margin:auto;padding:48px 24px 70px}h1{text-align:center;font-size:clamp(36px,6vw,64px);margin:0 0 10px;color:#244f7d}.sub{text-align:center;color:#6d89aa;font-size:18px;margin-bottom:38px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}.card{display:block;text-decoration:none;color:#244e7c;border:1px solid #dceafa;border-radius:28px;overflow:hidden;background:#fff;box-shadow:0 10px 28px rgba(38,88,140,.08);cursor:pointer;transition:.2s}.card:hover{transform:translateY(-3px)}.card img{width:100%;height:230px;object-fit:cover;display:block}.card-body{padding:22px 26px 26px;display:flex;justify-content:space-between;gap:20px;align-items:center}.card h2{margin:0 0 7px;font-size:22px}.card p{margin:0;color:#6d89aa;line-height:1.5}.arrow{font-size:32px;color:#2167bd}.modal{display:none;position:fixed;inset:0;background:rgba(20,50,80,.45);padding:24px;z-index:5;overflow:auto}.modal.show{display:flex;align-items:center;justify-content:center}.box{background:#fff;max-width:720px;width:100%;max-height:90vh;overflow:auto;border-radius:24px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.2)}.close{float:right;border:0;background:#edf5fd;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:18px}.box h2{margin-top:4px}.option{display:block;text-decoration:none;color:#244e7c;border:1px solid #dceafa;padding:15px;border-radius:14px;margin:10px 0;background:#f9fcff;font-weight:800;cursor:pointer}.option small{display:block;color:#6d89aa;font-weight:400;margin-top:5px}.back{border:0;background:none;color:#2167bd;font-weight:800;cursor:pointer;margin-bottom:15px;padding:0;font-size:15px}.search{width:100%;padding:14px;border:1px solid #cfe0f2;border-radius:12px;font-size:16px;margin:10px 0 18px}.batch{border:1px solid #dceafa;border-radius:18px;padding:18px;margin:12px 0;cursor:pointer;background:#fbfdff}.batch h3{margin:0 0 6px}.muted{color:#6d89aa}.batch-photo{width:100%;max-height:360px;object-fit:contain;border-radius:14px;background:#f2f7fc;margin:10px 0}.customer{border:1px solid #dceafa;border-radius:15px;padding:15px;margin:10px 0;cursor:pointer}.customer:hover{background:#f7fbff}.detail{border:1px solid #dceafa;border-radius:18px;padding:20px}.row{padding:10px 0;border-bottom:1px solid #edf3f8}.row:last-child{border-bottom:0}.total{font-size:26px;font-weight:900;margin-top:8px}.status{display:inline-block;padding:7px 10px;border-radius:999px;background:#eef6ff;color:#2167bd;font-weight:800;font-size:13px}.empty{text-align:center;color:#6d89aa;padding:25px 5px}footer{text-align:center;color:#8aa0b9;padding:25px}@media(max-width:720px){.grid{grid-template-columns:1fr}.card img{height:190px}}
+*{
+  box-sizing:border-box
+}
+
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  color:#244e7c;
+  background:#fff
+}
+
+header img{
+  width:100%;
+  display:block;
+  max-height:360px;
+  object-fit:cover
+}
+
+.nav{
+  padding:18px 7%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid #e4eef8
+}
+
+.brand{
+  font-size:22px;
+  font-weight:900
+}
+
+.admin-link{
+  color:#2167bd;
+  text-decoration:none;
+  font-weight:800
+}
+
+main{
+  max-width:1200px;
+  margin:auto;
+  padding:48px 24px 70px
+}
+
+h1{
+  text-align:center;
+  font-size:clamp(36px,6vw,64px);
+  margin:0 0 10px;
+  color:#244f7d
+}
+
+.sub{
+  text-align:center;
+  color:#6d89aa;
+  font-size:18px;
+  margin-bottom:38px
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:24px
+}
+
+.card{
+  display:block;
+  text-decoration:none;
+  color:#244e7c;
+  border:1px solid #dceafa;
+  border-radius:28px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 10px 28px rgba(38,88,140,.08);
+  cursor:pointer;
+  transition:.2s
+}
+
+.card:hover{
+  transform:translateY(-3px)
+}
+
+.card img{
+  width:100%;
+  height:230px;
+  object-fit:cover;
+  display:block
+}
+
+.card-body{
+  padding:22px 26px 26px;
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  align-items:center
+}
+
+.card h2{
+  margin:0 0 7px;
+  font-size:22px
+}
+
+.card p{
+  margin:0;
+  color:#6d89aa;
+  line-height:1.5
+}
+
+.arrow{
+  font-size:32px;
+  color:#2167bd
+}
+
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(20,50,80,.45);
+  padding:24px;
+  z-index:5;
+  overflow:auto
+}
+
+.modal.show{
+  display:flex;
+  align-items:center;
+  justify-content:center
+}
+
+.box{
+  background:#fff;
+  max-width:760px;
+  width:100%;
+  max-height:90vh;
+  overflow:auto;
+  border-radius:24px;
+  padding:28px;
+  box-shadow:0 20px 60px rgba(0,0,0,.2)
+}
+
+.close{
+  float:right;
+  border:0;
+  background:#edf5fd;
+  border-radius:50%;
+  width:34px;
+  height:34px;
+  cursor:pointer;
+  font-size:18px
+}
+
+.box h2{
+  margin-top:4px
+}
+
+.option{
+  display:block;
+  text-decoration:none;
+  color:#244e7c;
+  border:1px solid #dceafa;
+  padding:15px;
+  border-radius:14px;
+  margin:10px 0;
+  background:#f9fcff;
+  font-weight:800;
+  cursor:pointer
+}
+
+.option:hover{
+  background:#f1f8ff
+}
+
+.option small{
+  display:block;
+  color:#6d89aa;
+  font-weight:400;
+  margin-top:5px
+}
+
+.back{
+  border:0;
+  background:none;
+  color:#2167bd;
+  font-weight:800;
+  cursor:pointer;
+  margin-bottom:15px;
+  padding:0;
+  font-size:15px
+}
+
+.search{
+  width:100%;
+  padding:14px;
+  border:1px solid #cfe0f2;
+  border-radius:12px;
+  font-size:16px;
+  margin:10px 0 18px
+}
+
+.batch{
+  border:1px solid #dceafa;
+  border-radius:18px;
+  padding:18px;
+  margin:12px 0;
+  cursor:pointer;
+  background:#fbfdff
+}
+
+.batch:hover{
+  background:#f7fbff
+}
+
+.batch h3{
+  margin:0 0 6px
+}
+
+.muted{
+  color:#6d89aa
+}
+
+.batch-photo{
+  width:100%;
+  max-height:360px;
+  object-fit:contain;
+  border-radius:14px;
+  background:#f2f7fc;
+  margin:10px 0
+}
+
+.customer{
+  border:1px solid #dceafa;
+  border-radius:15px;
+  padding:15px;
+  margin:10px 0;
+  cursor:pointer
+}
+
+.customer:hover{
+  background:#f7fbff
+}
+
+.detail{
+  border:1px solid #dceafa;
+  border-radius:18px;
+  padding:20px
+}
+
+.row{
+  padding:10px 0;
+  border-bottom:1px solid #edf3f8;
+  line-height:1.5
+}
+
+.row:last-child{
+  border-bottom:0
+}
+
+.total{
+  font-size:26px;
+  font-weight:900;
+  margin-top:8px
+}
+
+.status{
+  display:inline-block;
+  padding:7px 10px;
+  border-radius:999px;
+  background:#eef6ff;
+  color:#2167bd;
+  font-weight:800;
+  font-size:13px
+}
+
+.success{
+  padding:13px;
+  border-radius:13px;
+  background:#ecfdf5;
+  color:#15803d;
+  font-weight:800;
+  margin-top:12px
+}
+
+.pending{
+  padding:13px;
+  border-radius:13px;
+  background:#fff7ed;
+  color:#c2410c;
+  font-weight:800;
+  margin-top:12px
+}
+
+.rejected{
+  padding:13px;
+  border-radius:13px;
+  background:#fff1f2;
+  color:#be123c;
+  font-weight:800;
+  margin-top:12px
+}
+
+.empty{
+  text-align:center;
+  color:#6d89aa;
+  padding:25px 5px
+}
+
+.fileinput{
+  width:100%;
+  margin-top:10px;
+  padding:12px;
+  border:1px dashed #b8cce2;
+  border-radius:12px;
+  background:#fbfdff
+}
+
+.paybtn{
+  width:100%;
+  border:0;
+  border-radius:12px;
+  padding:13px;
+  margin-top:10px;
+  background:#2167bd;
+  color:#fff;
+  font-weight:800;
+  cursor:pointer
+}
+
+.paybtn:disabled{
+  opacity:.6;
+  cursor:not-allowed
+}
+
+footer{
+  text-align:center;
+  color:#8aa0b9;
+  padding:25px
+}
+
+@media(max-width:720px){
+
+  .grid{
+    grid-template-columns:1fr
+  }
+
+  .card img{
+    height:190px
+  }
+
+  .box{
+    padding:22px
+  }
+
+}
 </style>
 </head>
+
 <body>
-<header><img src="header.jpeg" alt="2408 Room Store - Since 2015"></header>
-<nav class="nav"><div class="brand">GO 2408roomstore</div><a class="admin-link" href="/admin">Admin</a></nav>
-<main><h1>GO 2408roomstore</h1><div class="sub">Pilih layanan yang mau kamu akses ✨</div>
-<div class="grid">
-<div class="card" onclick="openMenu('super')"><img src="super-jajan.jpeg" alt="GO Super Jajan"><div class="card-body"><div><h2>GO Super Jajan (WH Nab)</h2><p>Update jajan, payment batch & album arrived INA.</p></div><div class="arrow">→</div></div></div>
-<div class="card" onclick="openMenu('efensi')"><img src="efensi.jpeg" alt="GO Efensi Stan"><div class="card-body"><div><h2>GO Efensi Stan</h2><p>Update order, payment batch & album arrived INA.</p></div><div class="arrow">→</div></div></div>
-<div class="card" onclick="openMenu('konser')"><img src="jastip-konser.jpeg" alt="Jastip Tiket Konser"><div class="card-body"><div><h2>Jastip Tiket Konser</h2><p>Jadwal konser, bookslot dan form jastip per konser.</p></div><div class="arrow">→</div></div></div>
-<div class="card" onclick="openMenu('store')"><img src="jastip-2408.jpeg" alt="Jastip 2408roomstore"><div class="card-body"><div><h2>Jastip 2408roomstore</h2><p>Update jajan, payment batch & informasi store.</p></div><div class="arrow">→</div></div></div>
-</div></main><footer>GO 2408roomstore · Since 2015</footer>
-<div class="modal" id="modal" onclick="if(event.target===this)closeMenu()"><div class="box"><button class="close" onclick="closeMenu()">×</button><h2 id="modalTitle"></h2><div id="content"></div></div></div>
+
+<header>
+  <img
+    src="header.jpeg"
+    alt="2408 Room Store - Since 2015">
+</header>
+
+
+<nav class="nav">
+
+  <div class="brand">
+    GO 2408roomstore
+  </div>
+
+  <a
+    class="admin-link"
+    href="/admin">
+    Admin
+  </a>
+
+</nav>
+
+
+<main>
+
+  <h1>
+    GO 2408roomstore
+  </h1>
+
+  <div class="sub">
+    Pilih layanan yang mau kamu akses ✨
+  </div>
+
+
+  <div class="grid">
+
+
+    <div
+      class="card"
+      onclick="openMenu('super')">
+
+      <img
+        src="super-jajan.jpeg"
+        alt="GO Super Jajan">
+
+      <div class="card-body">
+
+        <div>
+
+          <h2>
+            GO Super Jajan (WH Nab)
+          </h2>
+
+          <p>
+            Update jajan, payment batch & album arrived INA.
+          </p>
+
+        </div>
+
+        <div class="arrow">
+          →
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="card"
+      onclick="openMenu('efensi')">
+
+      <img
+        src="efensi.jpeg"
+        alt="GO Efensi Stan">
+
+      <div class="card-body">
+
+        <div>
+
+          <h2>
+            GO Efensi Stan
+          </h2>
+
+          <p>
+            Update order, payment batch & album arrived INA.
+          </p>
+
+        </div>
+
+        <div class="arrow">
+          →
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="card"
+      onclick="openMenu('konser')">
+
+      <img
+        src="jastip-konser.jpeg"
+        alt="Jastip Tiket Konser">
+
+      <div class="card-body">
+
+        <div>
+
+          <h2>
+            Jastip Tiket Konser
+          </h2>
+
+          <p>
+            Jadwal konser, bookslot dan form jastip per konser.
+          </p>
+
+        </div>
+
+        <div class="arrow">
+          →
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="card"
+      onclick="openMenu('store')">
+
+      <img
+        src="jastip-2408.jpeg"
+        alt="Jastip 2408roomstore">
+
+      <div class="card-body">
+
+        <div>
+
+          <h2>
+            Jastip 2408roomstore
+          </h2>
+
+          <p>
+            Update jajan, payment batch & informasi store.
+          </p>
+
+        </div>
+
+        <div class="arrow">
+          →
+        </div>
+
+      </div>
+
+    </div>
+
+
+  </div>
+
+</main>
+
+
+<footer>
+  GO 2408roomstore · Since 2015
+</footer>
+
+
+<div
+  class="modal"
+  id="modal"
+  onclick="if(event.target===this)closeMenu()">
+
+  <div class="box">
+
+    <button
+      class="close"
+      onclick="closeMenu()">
+      ×
+    </button>
+
+    <h2 id="modalTitle"></h2>
+
+    <div id="content"></div>
+
+  </div>
+
+</div>
+
+
 <script>
-const data={super:{title:'GO Super Jajan (WH Nab)',opts:[['Update Jajan','Cari nama → lihat semua data order dari Google Sheets','orders'],['Payment Batch','Pilih batch → cari nama → bayar & upload bukti','payment'],['Album Arrived INA','Lihat album/barang yang sudah tiba di Indonesia','album']]},efensi:{title:'GO Efensi Stan',opts:[['Update Order','Cari nama → lihat semua data order dari Google Sheets','orders'],['Payment Batch','Pilih batch → cari nama → bayar & upload bukti','payment'],['Album Arrived INA','Lihat album/barang yang sudah tiba di Indonesia','album']]},konser:{title:'Jastip Tiket Konser',opts:[['Jadwal Konser','Lihat jadwal konser terbaru','schedule'],['Form Bookslot','Pilih konser dan akses form bookslot','bookslot'],['Form Jastip per Konser','Pilih konser dan akses form jastip','concertform']]},store:{title:'Jastip 2408roomstore',opts:[['Update Jajan','Cari nama → lihat semua data order dari Google Sheets','orders'],['Payment Batch','Pilih batch → cari nama → bayar & upload bukti','payment']]}};
-const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));const money=n=>{let x=String(n??'').trim();if(!x)return '-';let z=Number(x.replace(/[^0-9.-]/g,''));return Number.isFinite(z)?'Rp '+z.toLocaleString('id-ID'):x};let active='',loadedBatches=[],currentBatchId=null,currentCustomerIndex=null;
-function openMenu(k){active=k;$('modalTitle').textContent=data[k].title;$('content').innerHTML=data[k].opts.map(o=>`<div class="option" onclick="openFeature('${o[2]}')"><b>${o[0]}</b><small>${o[1]}</small></div>`).join('');$('modal').classList.add('show')}
-function closeMenu(){$('modal').classList.remove('show')}function back(){return `<button class="back" onclick="openMenu('${active}')">← Kembali</button>`}
-function openFeature(t){if(t==='orders')return ordersView();if(t==='payment')return paymentBatches();if(t==='album')return contentView('album');if(t==='schedule')return contentView('schedule');if(t==='bookslot')return contentView('bookslot');if(t==='concertform')return contentView('concertform')}
-async function ordersView(){ $('modalTitle').textContent=active==='efensi'?'Update Order':'Update Jajan';$('content').innerHTML=back()+`<p class="muted">Data diambil langsung dari Google Sheets.</p><input class="search" id="orderSearch" placeholder="Ketik nama kamu..." oninput="searchOrders()"><div id="orderResults"><div class="empty">Masukkan nama untuk mencari.</div></div>` }
-let orderTimer;async function searchOrders(){clearTimeout(orderTimer);const q=$('orderSearch').value.trim();if(q.length<2){$('orderResults').innerHTML='<div class="empty">Ketik minimal 2 huruf nama.</div>';return}orderTimer=setTimeout(async()=>{ $('orderResults').innerHTML='<div class="empty">Mencari data...</div>';try{const r=await fetch('/api/orders?name='+encodeURIComponent(q));const d=await r.json();if(!r.ok)throw Error(d.error||'Gagal membaca Google Sheets.');const arr=d.orders||[];$('orderResults').innerHTML=arr.length?arr.map((x,i)=>`<div class="customer"><b>${esc(x.name)}</b><div class="row"><b>List Barang</b><br>${esc(x.item||'-')}</div><div class="row"><b>Negara</b><br>${esc(x.country||'-')}</div><div class="row"><b>Grup Order</b><br>${esc(x.group||'-')}</div><div class="row"><b>Kode</b><br>${esc(x.code||'-')}</div><div class="row"><b>Update</b><br><span class="status">${esc(x.update||'-')}</span></div><div class="row"><b>Payment (EMS / AC TAX)</b><br>${esc(x.payment||'-')}</div><div class="row"><b>Total</b><br><strong>${money(x.total)}</strong></div><div class="row"><b>Payment Due</b><br>${esc(x.paymentDue||'-')}</div><div class="row"><b>Detail</b><br>${esc(x.detail||'-')}</div></div>`).join(''):'<div class="empty">Nama tidak ditemukan.</div>'}catch(e){$('orderResults').innerHTML=`<div class="rejected">${esc(e.message)}</div>`}},250)}
-async function paymentBatches(){$('modalTitle').textContent='Payment Batch';$('content').innerHTML=back()+'<div class="empty">Memuat batch...</div>';try{const r=await fetch('/api/batches');const d=await r.json();if(!r.ok)throw Error(d.error||'Gagal mengambil batch.');loadedBatches=(d.batches||[]).filter(x=>x.service===active);$('content').innerHTML=back()+(loadedBatches.length?loadedBatches.map(b=>`<div class="batch" onclick="viewBatch(${Number(b.id)})"><h3>${esc(b.batch||b.batch_name)}</h3><div class="muted">${b.customers?.length||0} customer</div></div>`).join(''):'<div class="empty">Belum ada Payment Batch.</div>')}catch(e){$('content').innerHTML=back()+`<div class="rejected">${esc(e.message)}</div>`}}
-function photo(path,alt){if(!path)return '';return `<img class="batch-photo" src="${/^https?:/.test(path)?esc(path):'/api/file?path='+encodeURIComponent(path)}" alt="${esc(alt)}" onerror="this.style.display='none'">`}
-function viewBatch(id){currentBatchId=id;const b=loadedBatches.find(x=>Number(x.id)===Number(id));if(!b)return;$('modalTitle').textContent=b.batch||b.batch_name;$('content').innerHTML=back()+`<div class="detail">${photo(b.batch_photo||b.batchPhoto,'Foto batch')}${photo(b.qris,'QRIS')||''}<p class="muted">Cari nama customer</p><input class="search" id="batchSearch" placeholder="Ketik nama kamu..." oninput="filterBatch()"><div id="batchCustomers">${customerCards(b.customers||[])}</div></div>`}
-function customerCards(arr,q=''){const a=arr.map((c,i)=>({...c,__i:i})).filter(c=>String(c.name||'').toLowerCase().includes(q.toLowerCase()));return a.length?a.map(c=>`<div class="customer" onclick="viewCustomer(${c.__i})"><b>${esc(c.name)}</b><div class="muted">${esc(c.items||'')}</div><strong>${money(c.total)}</strong></div>`).join(''):'<div class="empty">Nama tidak ditemukan.</div>'}
-function filterBatch(){const b=loadedBatches.find(x=>Number(x.id)===Number(currentBatchId));$('batchCustomers').innerHTML=customerCards(b?.customers||[],$('batchSearch').value)}
-async function viewCustomer(i){currentCustomerIndex=i;const b=loadedBatches.find(x=>Number(x.id)===Number(currentBatchId)),c=b?.customers?.[i];if(!c)return;$('modalTitle').textContent=c.name;$('content').innerHTML=back()+`<div class="detail"><div class="row"><b>Barang / Jajanan</b><br>${esc(c.items||'-')}</div><div class="row"><b>Total Pembayaran</b><div class="total">${money(c.total)}</div></div><div id="payState" class="paybox">Memuat status...</div></div>`;try{const r=await fetch(`/api/payment-proof?batch_id=${currentBatchId}&customer_index=${i}`);const d=await r.json();if(!r.ok)throw Error(d.error||'Gagal mengambil status pembayaran.');const latest=(d.submissions||[])[0];let h=`<b>QRIS Pembayaran</b>${photo(b.qris,'QRIS Pembayaran')}`;if(latest?.status==='approved')h+=`<div class="success">✓ PEMBAYARAN BERHASIL</div>`;else if(latest?.status==='pending')h+=`<div class="pending">⏳ MENUNGGU VERIFIKASI</div>`;else {if(latest?.status==='rejected')h+=`<div class="rejected">✕ DITOLAK<br><small>${esc(latest.note||'Silakan upload bukti kembali.')}</small></div>`;h+=uploadForm()}$('payState').innerHTML=h}catch(e){$('payState').innerHTML=`<div class="rejected">${esc(e.message)}</div>`}}
-function uploadForm(){return `<div style="margin-top:14px"><b>Upload Bukti Pembayaran</b><input class="fileinput" id="proofFile" type="file" accept="image/*"><div id="proofStatus" class="muted"></div><button class="paybtn" onclick="sendProof()">KIRIM BUKTI PEMBAYARAN</button></div>`}
-async function sendProof(){const f=$('proofFile')?.files?.[0],st=$('proofStatus');if(!f){st.textContent='Pilih bukti pembayaran dulu.';return}st.textContent='Mengupload...';try{const u=await fetch('/api/payment-proof',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'upload-url',filename:f.name})});const ud=await u.json();if(!u.ok)throw Error(ud.error||'Gagal menyiapkan upload.');const p=await fetch(ud.signedUrl,{method:'PUT',headers:{'Content-Type':f.type},body:f});if(!p.ok)throw Error('Upload gagal.');const b=loadedBatches.find(x=>Number(x.id)===Number(currentBatchId)),c=b.customers[currentCustomerIndex];const s=await fetch('/api/payment-proof',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'submit',batch_id:Number(currentBatchId),customer_index:Number(currentCustomerIndex),customer_name:c.name,proof_path:ud.path})});const sd=await s.json();if(!s.ok)throw Error(sd.error||'Gagal menyimpan bukti.');st.className='success';st.textContent='✓ Bukti berhasil dikirim. Menunggu verifikasi admin.';setTimeout(()=>viewCustomer(currentCustomerIndex),700)}catch(e){st.className='rejected';st.textContent=e.message}}
-async function contentView(type){const names={album:'Album Arrived INA',schedule:'Jadwal Konser',bookslot:'Form Bookslot',concertform:'Form Jastip per Konser'};$('modalTitle').textContent=names[type];$('content').innerHTML=back()+'<div class="empty">Memuat...</div>';try{const r=await fetch('/api/content?type='+encodeURIComponent(type));const d=await r.json();let arr=(d.items||[]).filter(x=>!x.service||x.service===active||type!=='album');if(type==='album')arr=arr.filter(x=>x.service===active);let h=back();h+=arr.length?arr.map(x=>{if(type==='album')return `<div class="batch"><h3>${esc(x.title)}</h3><p class="muted">${esc(x.note)}</p>${photo(x.photo,'Album')}</div>`;return `<div class="batch"><h3>${esc(x.title||x.concert)}</h3><p class="muted">${esc(x.date||'')} ${esc(x.venue||'')}</p><p class="muted">${esc(x.note||'')}</p>${x.photo?photo(x.photo,'Foto'):''}${x.url?`<a class="paybtn" style="display:block;text-decoration:none;text-align:center" href="${esc(x.url)}" target="_blank" rel="noopener">BUKA FORM</a>`:''}</div>`}).join(''):'<div class="empty">Belum ada data.</div>';$('content').innerHTML=h}catch(e){$('content').innerHTML=back()+`<div class="rejected">${esc(e.message)}</div>`}}
-</script></body></html>
+
+const DATA = {
+
+  super:{
+    title:'GO Super Jajan (WH Nab)',
+
+    opts:[
+
+      [
+        'Update Jajan',
+        'Cari nama → lihat semua data order kamu.',
+        'orders'
+      ],
+
+      [
+        'Payment Batch',
+        'Pilih batch → cari nama → lihat tagihan & upload bukti.',
+        'payment'
+      ],
+
+      [
+        'Album Arrived INA',
+        'Lihat barang/album yang sudah tiba di Indonesia.',
+        'album'
+      ]
+
+    ]
+  },
+
+
+  efensi:{
+    title:'GO Efensi Stan',
+
+    opts:[
+
+      [
+        'Update Order',
+        'Cari nama → lihat semua data order kamu.',
+        'orders'
+      ],
+
+      [
+        'Payment Batch',
+        'Pilih batch → cari nama → lihat tagihan & upload bukti.',
+        'payment'
+      ],
+
+      [
+        'Album Arrived INA',
+        'Lihat barang/album yang sudah tiba di Indonesia.',
+        'album'
+      ]
+
+    ]
+  },
+
+
+  konser:{
+    title:'Jastip Tiket Konser',
+
+    opts:[
+
+      [
+        'Jadwal Konser',
+        'Lihat jadwal konser terbaru.',
+        'schedule'
+      ],
+
+      [
+        'Form Bookslot',
+        'Pilih konser dan akses form bookslot.',
+        'bookslot'
+      ],
+
+      [
+        'Form Jastip per Konser',
+        'Pilih konser dan akses form jastip.',
+        'concertform'
+      ]
+
+    ]
+  },
+
+
+  store:{
+    title:'Jastip 2408roomstore',
+
+    opts:[
+
+      [
+        'Update Jajan',
+        'Cari nama → lihat semua data order kamu.',
+        'orders'
+      ],
+
+      [
+        'Payment Batch',
+        'Pilih batch → cari nama → lihat tagihan & upload bukti.',
+        'payment'
+      ]
+
+    ]
+  }
+
+};
+
+
+const $ =
+  id =>
+  document.getElementById(id);
+
+
+const esc =
+  s =>
+  String(s ?? '')
+    .replace(
+      /[&<>"']/g,
+      m =>
+      ({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        '"':'&quot;',
+        "'":'&#039;'
+      }[m])
+    );
+
+
+function money(value){
+
+  const x =
+    String(value ?? '').trim();
+
+  if(!x)
+    return '-';
+
+  const z =
+    Number(
+      x.replace(
+        /[^0-9.-]/g,
+        ''
+      )
+    );
+
+  return Number.isFinite(z)
+    ? 'Rp ' +
+      z.toLocaleString('id-ID')
+    : x;
+
+}
+
+
+let activeService = '';
+
+let loadedBatches = [];
+
+let currentBatchId = null;
+
+let currentCustomerIndex = null;
+
+
+function openMenu(service){
+
+  activeService =
+    service;
+
+  $('modalTitle')
+    .textContent =
+    DATA[service].title;
+
+  $('content')
+    .innerHTML =
+    DATA[service]
+    .opts
+    .map(
+      option =>
+      `
+        <div
+          class="option"
+          onclick="
+            openFeature('${option[2]}')
+          ">
+
+          <b>
+            ${esc(option[0])}
+          </b>
+
+          <small>
+            ${esc(option[1])}
+          </small>
+
+        </div>
+      `
+    )
+    .join('');
+
+  $('modal')
+    .classList
+    .add('show');
+
+}
+
+
+function closeMenu(){
+
+  $('modal')
+    .classList
+    .remove('show');
+
+}
+
+
+function back(){
+
+  return `
+    <button
+      class="back"
+      onclick="
+        openMenu('${activeService}')
+      ">
+      ← Kembali
+    </button>
+  `;
+
+}
+
+
+function openFeature(type){
+
+  if(type === 'orders')
+    return ordersView();
+
+  if(type === 'payment')
+    return paymentBatches();
+
+  if(type === 'album')
+    return contentView('album');
+
+  if(type === 'schedule')
+    return contentView('schedule');
+
+  if(type === 'bookslot')
+    return contentView('bookslot');
+
+  if(type === 'concertform')
+    return contentView('concertform');
+
+}
+
+
+/* =========================
+   ORDER DATABASE
+========================= */
+
+function ordersView(){
+
+  $('modalTitle')
+    .textContent =
+    activeService === 'efensi'
+      ? 'Update Order'
+      : 'Update Jajan';
+
+  $('content')
+    .innerHTML =
+    back() +
+
+    `
+      <p class="muted">
+        Data diambil dari database order.
+      </p>
+
+      <input
+        class="search"
+        id="orderSearch"
+        placeholder="Ketik nama kamu..."
+        oninput="searchOrders()">
+
+      <div id="orderResults">
+
+        <div class="empty">
+          Masukkan nama untuk mencari.
+        </div>
+
+      </div>
+    `;
+
+}
+
+
+let orderTimer;
+
+
+async function searchOrders(){
+
+  clearTimeout(orderTimer);
+
+  const input =
+    $('orderSearch');
+
+  if(!input)
+    return;
+
+  const query =
+    input.value.trim();
+
+  if(query.length < 2){
+
+    $('orderResults')
+      .innerHTML =
+      `
+        <div class="empty">
+          Ketik minimal 2 huruf nama.
+        </div>
+      `;
+
+    return;
+
+  }
+
+
+  orderTimer =
+  setTimeout(
+    async () => {
+
+      $('orderResults')
+        .innerHTML =
+        `
+          <div class="empty">
+            Mencari data...
+          </div>
+        `;
+
+
+      try{
+
+        const response =
+          await fetch(
+            '/api/orders?name=' +
+            encodeURIComponent(query)
+          );
+
+
+        const data =
+          await response
+            .json();
+
+
+        if(!response.ok){
+
+          throw Error(
+            data.error ||
+            'Gagal membaca data order.'
+          );
+
+        }
+
+
+        const orders =
+          data.orders || [];
+
+
+        if(!orders.length){
+
+          $('orderResults')
+            .innerHTML =
+            `
+              <div class="empty">
+                Nama tidak ditemukan.
+              </div>
+            `;
+
+          return;
+
+        }
+
+
+        $('orderResults')
+          .innerHTML =
+          orders
+          .map(
+            order =>
+
+            `
+
+              <div class="customer">
+
+
+                <b>
+                  ${esc(order.name)}
+                </b>
+
+
+                <div class="row">
+
+                  <b>
+                    List Barang
+                  </b>
+
+                  <br>
+
+                  ${esc(
+                    order.item || '-'
+                  )}
+
+                </div>
+
+
+                <div class="row">
+
+                  <b>
+                    Negara
+                  </b>
+
+                  <br>
+
+                  ${esc(
+                    order.country || '-'
+                  )}
+
+                </div>
+
+
+                <div class="row">
+
+                  <b>
+                    Grup Order
+                  </b>
+
+                  <br>
+
+                  ${esc(
+                    order.group || '-'
+                  )}
+
+                </div>
+
+
+                <div class="row">
+
+                  <b>
+                    Kode
+                  </b>
+
+                  <br>
+
+                  ${esc(
+                    order.code || '-'
+                  )}
+
+                </div>
+
+
+                <div class="row">
+
+                  <b>
+                    Update
+                  </b>
+
+                  <br>
+
+                  <span class="status">
+                    ${esc(
+                      order.update || '-'
+                    )}
+                  </span>
+
+                </div>
+
+
+                <div class="row">
+
+                  <b>
+                    Payment (EMS / AC TAX)
+                  </b>
+
+                  <br>
+
+                  ${esc(
+                    order.payment || '-'
+                  )}
+
+                </div>
+
+
+                <div class="row">
+
+                  <b>
+                    Total Payment Due
+                  </b>
+
+                  <br>
+
+                  <strong>
+                    ${money(order.total)}
+                  </strong>
+
+                </div>
+
+
+                <div class="row">
+
+                  <b>
+                    Detail
+                  </b>
+
+                  <br>
+
+                  ${esc(
+                    order.detail || '-'
+                  )}
+
+                </div>
+
+
+                ${
+                  order.status
+                  ?
+
+                  `
+
+                    <div class="row">
+
+                      <b>
+                        Status Website
+                      </b>
+
+                      <br>
+
+                      <span class="status">
+                        ${esc(order.status)}
+                      </span>
+
+                    </div>
+
+                  `
+
+                  :
+
+                  ''
+                }
+
+
+              </div>
+
+            `
+          )
+          .join('');
+
+
+      }catch(error){
+
+        $('orderResults')
+          .innerHTML =
+          `
+            <div class="rejected">
+              ${esc(error.message)}
+            </div>
+          `;
+
+      }
+
+    },
+    250
+  );
+
+}
+
+
+/* =========================
+   PAYMENT BATCH
+========================= */
+
+async function paymentBatches(){
+
+  $('modalTitle')
+    .textContent =
+    'Payment Batch';
+
+  $('content')
+    .innerHTML =
+    back() +
+
+    `
+      <div class="empty">
+        Memuat batch...
+      </div>
+    `;
+
+
+  try{
+
+    const response =
+      await fetch(
+        '/api/batches'
+      );
+
+
+    const data =
+      await response.json();
+
+
+    if(!response.ok){
+
+      throw Error(
+        data.error ||
+        'Gagal mengambil batch.'
+      );
+
+    }
+
+
+    loadedBatches =
+      (data.batches || [])
+      .filter(
+        batch =>
+        batch.service ===
+        activeService
+      );
+
+
+    $('content')
+      .innerHTML =
+      back() +
+
+      (
+
+        loadedBatches.length
+
+        ?
+
+        loadedBatches
+        .map(
+          batch =>
+
+          `
+
+            <div
+              class="batch"
+              onclick="
+                viewBatch(${Number(batch.id)})
+              ">
+
+              <h3>
+                ${esc(
+                  batch.batch ||
+                  batch.batch_name ||
+                  'Payment Batch'
+                )}
+              </h3>
+
+              <div class="muted">
+
+                ${
+                  (batch.customers || [])
+                  .length
+                }
+
+                customer
+
+              </div>
+
+            </div>
+
+          `
+        )
+        .join('')
+
+        :
+
+        `
+          <div class="empty">
+            Belum ada Payment Batch.
+          </div>
+        `
+
+      );
+
+
+  }catch(error){
+
+    $('content')
+      .innerHTML =
+      back() +
+
+      `
+        <div class="rejected">
+          ${esc(error.message)}
+        </div>
+      `;
+
+  }
+
+}
+
+
+function photo(
+  path,
+  alt
+){
+
+  if(!path)
+    return '';
+
+  const src =
+    /^https?:\/\//i
+      .test(path)
+
+      ?
+
+      path
+
+      :
+
+      '/api/file?path=' +
+      encodeURIComponent(path);
+
+
+  return `
+
+    <img
+      class="batch-photo"
+      src="${esc(src)}"
+      alt="${esc(alt)}"
+      onerror="
+        this.style.display='none'
+      ">
+
+  `;
+
+}
+
+
+function viewBatch(id){
+
+  currentBatchId =
+    Number(id);
+
+
+  const batch =
+    loadedBatches
+      .find(
+        x =>
+        Number(x.id) ===
+        Number(id)
+      );
+
+
+  if(!batch)
+    return;
+
+
+  $('modalTitle')
+    .textContent =
+    batch.batch ||
+    batch.batch_name ||
+    'Payment Batch';
+
+
+  $('content')
+    .innerHTML =
+
+    back() +
+
+    `
+
+      <div class="detail">
+
+        ${photo(
+          batch.batch_photo ||
+          batch.batchPhoto,
+          'Foto batch'
+        )}
+
+
+        ${
+          batch.qris
+
+          ?
+
+          photo(
+            batch.qris,
+            'QRIS pembayaran'
+          )
+
+          :
+
+          ''
+        }
+
+
+        <p class="muted">
+          Cari nama customer
+        </p>
+
+
+        <input
+          class="search"
+          id="batchSearch"
+          placeholder="Ketik nama kamu..."
+          oninput="filterBatch()">
+
+
+        <div
+          id="batchCustomers">
+
+          ${customerCards(
+            batch.customers || []
+          )}
+
+        </div>
+
+      </div>
+
+    `;
+
+}
+
+
+function customerCards(
+  customers,
+  query = ''
+){
+
+  const filtered =
+    customers
+    .map(
+      (customer,index) => ({
+        ...customer,
+        __index:index
+      })
+    )
+    .filter(
+      customer =>
+      String(
+        customer.name || ''
+      )
+      .toLowerCase()
+      .includes(
+        query.toLowerCase()
+      )
+    );
+
+
+  if(!filtered.length){
+
+    return `
+      <div class="empty">
+        Nama tidak ditemukan.
+      </div>
+    `;
+
+  }
+
+
+  return filtered
+    .map(
+      customer =>
+
+      `
+
+        <div
+          class="customer"
+          onclick="
+            viewCustomer(${customer.__index})
+          ">
+
+          <b>
+            ${esc(customer.name)}
+          </b>
+
+          <div class="muted">
+            ${esc(customer.items || '')}
+          </div>
+
+          <strong>
+            ${money(customer.total)}
+          </strong>
+
+        </div>
+
+      `
+    )
+    .join('');
+
+}
+
+
+function filterBatch(){
+
+  const batch =
+    loadedBatches
+      .find(
+        x =>
+        Number(x.id) ===
+        Number(currentBatchId)
+      );
+
+
+  if(!batch)
+    return;
+
+
+  $('batchCustomers')
+    .innerHTML =
+    customerCards(
+      batch.customers || [],
+      $('batchSearch').value
+    );
+
+}
+
+
+async function viewCustomer(index){
+
+  currentCustomerIndex =
+    Number(index);
+
+
+  const batch =
+    loadedBatches
+      .find(
+        x =>
+        Number(x.id) ===
+        Number(currentBatchId)
+      );
+
+
+  const customer =
+    batch?.customers?.[index];
+
+
+  if(!batch || !customer)
+    return;
+
+
+  $('modalTitle')
+    .textContent =
+    customer.name;
+
+
+  $('content')
+    .innerHTML =
+
+    back() +
+
+    `
+
+      <div class="detail">
+
+
+        <div class="row">
+
+          <b>
+            Barang / Jajanan
+          </b>
+
+          <br>
+
+          ${esc(
+            customer.items || '-'
+          )}
+
+        </div>
+
+
+        <div class="row">
+
+          <b>
+            Total Pembayaran
+          </b>
+
+          <div class="total">
+            ${money(customer.total)}
+          </div>
+
+        </div>
+
+
+        <div id="payState">
+
+          <div class="empty">
+            Memuat status pembayaran...
+          </div>
+
+        </div>
+
+
+      </div>
+
+    `;
+
+
+  try{
+
+    const response =
+      await fetch(
+        `/api/payment-proof?batch_id=${
+          encodeURIComponent(
+            currentBatchId
+          )
+        }&customer_index=${
+          encodeURIComponent(
+            currentCustomerIndex
+          )
+        }`
+      );
+
+
+    const data =
+      await response.json();
+
+
+    if(!response.ok){
+
+      throw Error(
+        data.error ||
+        'Gagal mengambil status pembayaran.'
+      );
+
+    }
+
+
+    const submissions =
+      data.submissions || [];
+
+
+    const latest =
+      submissions[0];
+
+
+    let html =
+      `
+
+        <div style="margin-top:14px">
+
+          <b>
+            QRIS Pembayaran
+          </b>
+
+          ${
+            batch.qris
+
+            ?
+
+            photo(
+              batch.qris,
+              'QRIS Pembayaran'
+            )
+
+            :
+
+            `
+              <div class="empty">
+                QRIS belum tersedia.
+              </div>
+            `
+          }
+
+        </div>
+
+      `;
+
+
+    if(
+      latest?.status ===
+      'approved'
+    ){
+
+      html +=
+      `
+        <div class="success">
+          ✓ PEMBAYARAN BERHASIL
+        </div>
+      `;
+
+    }
+
+    else
+    if(
+      latest?.status ===
+      'pending'
+    ){
+
+      html +=
+      `
+        <div class="pending">
+          ⏳ MENUNGGU VERIFIKASI ADMIN
+        </div>
+      `;
+
+    }
+
+    else{
+
+      if(
+        latest?.status ===
+        'rejected'
+      ){
+
+        html +=
+
+        `
+          <div class="rejected">
+
+            ✕ PEMBAYARAN DITOLAK
+
+            ${
+              latest.note
+
+              ?
+
+              `<br>
+               <small>
+                 ${esc(latest.note)}
+               </small>`
+
+              :
+
+              ''
+            }
+
+          </div>
+        `;
+
+      }
+
+
+      html +=
+      uploadForm();
+
+    }
+
+
+    $('payState')
+      .innerHTML =
+      html;
+
+
+  }catch(error){
+
+    $('payState')
+      .innerHTML =
+      `
+        <div class="rejected">
+          ${esc(error.message)}
+        </div>
+      `;
+
+  }
+
+}
+
+
+function uploadForm(){
+
+  return `
+
+    <div style="margin-top:18px">
+
+      <b>
+        Upload Bukti Pembayaran
+      </b>
+
+
+      <input
+        class="fileinput"
+        id="proofFile"
+        type="file"
+        accept="image/*">
+
+
+      <div
+        id="proofStatus"
+        class="muted"
+        style="margin-top:8px">
+      </div>
+
+
+      <button
+        class="paybtn"
+        onclick="sendProof()">
+
+        KIRIM BUKTI PEMBAYARAN
+
+      </button>
+
+    </div>
+
+  `;
+
+}
+
+
+async function sendProof(){
+
+  const file =
+    $('proofFile')
+    ?.files?.[0];
+
+
+  const status =
+    $('proofStatus');
+
+
+  if(!file){
+
+    status.textContent =
+      'Pilih bukti pembayaran dulu.';
+
+    return;
+
+  }
+
+
+  status.textContent =
+    'Menyiapkan upload...';
+
+
+  try{
+
+    const uploadResponse =
+      await fetch(
+        '/api/payment-proof',
+        {
+          method:'POST',
+
+          headers:{
+            'Content-Type':
+            'application/json'
+          },
+
+          body:JSON.stringify({
+
+            action:
+            'upload-url',
+
+            filename:
+            file.name
+
+          })
+
+        }
+      );
+
+
+    const uploadData =
+      await uploadResponse
+      .json();
+
+
+    if(!uploadResponse.ok){
+
+      throw Error(
+        uploadData.error ||
+        'Gagal menyiapkan upload.'
+      );
+
+    }
+
+
+    status.textContent =
+      'Mengupload bukti...';
+
+
+    const putResponse =
+      await fetch(
+        uploadData.signedUrl,
+        {
+          method:'PUT',
+
+          headers:{
+            'Content-Type':
+            file.type ||
+            'application/octet-stream'
+          },
+
+          body:file
+        }
+      );
+
+
+    if(!putResponse.ok){
+
+      throw Error(
+        'Upload bukti pembayaran gagal.'
+      );
+
+    }
+
+
+    const batch =
+      loadedBatches
+      .find(
+        x =>
+        Number(x.id) ===
+        Number(currentBatchId)
+      );
+
+
+    const customer =
+      batch
+      ?.customers
+      ?.[
+        currentCustomerIndex
+      ];
+
+
+    if(!customer){
+
+      throw Error(
+        'Data customer tidak ditemukan.'
+      );
+
+    }
+
+
+    status.textContent =
+      'Menyimpan bukti pembayaran...';
+
+
+    const submitResponse =
+      await fetch(
+        '/api/payment-proof',
+        {
+          method:'POST',
+
+          headers:{
+            'Content-Type':
+            'application/json'
+          },
+
+          body:JSON.stringify({
+
+            action:
+            'submit',
+
+            batch_id:
+            Number(
+              currentBatchId
+            ),
+
+            customer_index:
+            Number(
+              currentCustomerIndex
+            ),
+
+            customer_name:
+            customer.name,
+
+            proof_path:
+            uploadData.path
+
+          })
+
+        }
+      );
+
+
+    const submitData =
+      await submitResponse
+      .json();
+
+
+    if(!submitResponse.ok){
+
+      throw Error(
+        submitData.error ||
+        'Gagal menyimpan bukti pembayaran.'
+      );
+
+    }
+
+
+    status.className =
+      'success';
+
+    status.textContent =
+      '✓ Bukti berhasil dikirim. Menunggu verifikasi admin.';
+
+
+    setTimeout(
+      () =>
+      viewCustomer(
+        currentCustomerIndex
+      ),
+      700
+    );
+
+
+  }catch(error){
+
+    status.className =
+      'rejected';
+
+    status.textContent =
+      error.message;
+
+  }
+
+}
+
+
+/* =========================
+   CONTENT
+========================= */
+
+async function contentView(type){
+
+  const titleMap = {
+
+    album:
+    'Album Arrived INA',
+
+    schedule:
+    'Jadwal Konser',
+
+    bookslot:
+    'Form Bookslot',
+
+    concertform:
+    'Form Jastip per Konser'
+
+  };
+
+
+  $('modalTitle')
+    .textContent =
+    titleMap[type] ||
+    'Informasi';
+
+
+  $('content')
+    .innerHTML =
+    back() +
+
+    `
+      <div class="empty">
+        Memuat...
+      </div>
+    `;
+
+
+  try{
+
+    const response =
+      await fetch(
+        '/api/content?type=' +
+        encodeURIComponent(type)
+      );
+
+
+    const data =
+      await response.json();
+
+
+    if(!response.ok){
+
+      throw Error(
+        data.error ||
+        'Gagal mengambil content.'
+      );
+
+    }
+
+
+    let items =
+      data.items || [];
+
+
+    if(type === 'album'){
+
+      items =
+      items.filter(
+        item =>
+        item.service ===
+        activeService
+      );
+
+    }
+
+
+    let html =
+      back();
+
+
+    if(!items.length){
+
+      html +=
+      `
+        <div class="empty">
+          Belum ada data.
+        </div>
+      `;
+
+      $('content')
+        .innerHTML =
+        html;
+
+      return;
+
+    }
+
+
+    html +=
+
+      items
+      .map(
+        item => {
+
+          if(
+            type ===
+            'album'
+          ){
+
+            return `
+
+              <div class="batch">
+
+                <h3>
+                  ${esc(
+                    item.title || ''
+                  )}
+                </h3>
+
+                ${
+                  item.note
+
+                  ?
+
+                  `<p class="muted">
+                    ${esc(item.note)}
+                  </p>`
+
+                  :
+
+                  ''
+                }
+
+                ${photo(
+                  item.photo,
+                  'Album'
+                )}
+
+              </div>
+
+            `;
+
+          }
+
+
+          return `
+
+            <div class="batch">
+
+              <h3>
+                ${esc(
+                  item.title ||
+                  item.concert ||
+                  'Informasi'
+                )}
+              </h3>
+
+
+              ${
+                item.date ||
+                item.venue
+
+                ?
+
+                `<p class="muted">
+                  ${esc(item.date || '')}
+                  ${
+                    item.date &&
+                    item.venue
+                    ? ' · '
+                    : ''
+                  }
+                  ${esc(item.venue || '')}
+                </p>`
+
+                :
+
+                ''
+              }
+
+
+              ${
+                item.note
+
+                ?
+
+                `<p class="muted">
+                  ${esc(item.note)}
+                </p>`
+
+                :
+
+                ''
+              }
+
+
+              ${
+                item.photo
+
+                ?
+
+                photo(
+                  item.photo,
+                  'Foto'
+                )
+
+                :
+
+                ''
+              }
+
+
+              ${
+                item.url
+
+                ?
+
+                `
+                  <a
+                    class="paybtn"
+                    style="
+                      display:block;
+                      text-decoration:none;
+                      text-align:center
+                    "
+                    href="${esc(item.url)}"
+                    target="_blank"
+                    rel="noopener">
+
+                    BUKA FORM
+
+                  </a>
+                `
+
+                :
+
+                ''
+              }
+
+
+            </div>
+
+          `;
+
+        }
+      )
+      .join('');
+
+
+    $('content')
+      .innerHTML =
+      html;
+
+
+  }catch(error){
+
+    $('content')
+      .innerHTML =
+      back() +
+
+      `
+        <div class="rejected">
+          ${esc(error.message)}
+        </div>
+      `;
+
+  }
+
+}
+
+</script>
+
+</body>
+</html>
