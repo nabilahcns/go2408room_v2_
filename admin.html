@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GO2408ROOM Admin</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#eef5ff;color:#172033}
+button,input,textarea,select{font:inherit}button{cursor:pointer}
+.top{background:#fff;border-bottom:1px solid #dbe5f2;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+.logo{font-weight:800;font-size:20px}.sub{font-size:12px;color:#718096;margin-top:3px}
+.btn{border:0;border-radius:12px;padding:11px 16px;font-weight:700;background:#1f6feb;color:#fff}.btn.gray{background:#e8eef7;color:#25344d}
+.wrap{max-width:1100px;margin:28px auto;padding:0 18px}.lead{color:#66758b}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:22px}
+.card{background:#fff;border:1px solid #dbe5f2;border-radius:18px;padding:22px;min-height:145px;text-align:left;box-shadow:0 5px 20px #2030400b}
+.card:hover{border-color:#8eb8f7}.card h3{margin:0 0 7px}.card p{margin:0;color:#718096;font-size:14px}
+.modal{position:fixed;inset:0;background:#14203399;display:none;align-items:center;justify-content:center;padding:18px;z-index:10}.modal.show{display:flex}
+.box{background:#fff;width:min(850px,100%);max-height:92vh;overflow:auto;border-radius:22px;padding:24px}
+.head{display:flex;justify-content:space-between;align-items:start}.x{border:0;background:#edf2f7;border-radius:50%;width:36px;height:36px}
+.menu{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px}.menu button{text-align:left;background:#f6f9fd;border:1px solid #dce6f2;border-radius:15px;padding:17px}
+.menu b{display:block;margin-bottom:5px}.menu span{font-size:13px;color:#718096}
+.form{display:grid;gap:13px;margin-top:18px}.field{display:grid;gap:7px}label{font-size:13px;font-weight:700}
+input,textarea,select{width:100%;border:1px solid #ccd8e7;border-radius:11px;padding:11px;background:#fff}textarea{min-height:90px;resize:vertical}
+.actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.customer{border:1px solid #dbe5f2;border-radius:15px;padding:14px;margin-top:12px;background:#fbfdff}
+.customer-grid{display:grid;grid-template-columns:1.1fr 1.5fr .8fr auto;gap:10px;align-items:end}.remove{background:#fee2e2;color:#991b1b;border:0;border-radius:10px;padding:11px 12px}
+.upload{border:1px dashed #a9bad1;padding:14px;border-radius:13px;background:#f8fbff}.preview{display:none;max-width:180px;max-height:130px;margin-top:9px;border-radius:10px;object-fit:cover}
+.status{font-size:13px;color:#66758b}.ok{color:#15803d}.err{color:#b91c1c}
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}.loginbox{width:min(420px,100%);background:#fff;border-radius:22px;padding:28px;box-shadow:0 15px 50px #20304018}
+.hidden{display:none!important}
+@media(max-width:650px){.cards,.menu{grid-template-columns:1fr}.customer-grid{grid-template-columns:1fr}.top{padding:14px 16px}}
+</style>
+</head>
+<body>
+
+<div id="loginView" class="login">
+<div class="loginbox">
+<h1>GO2408ROOM</h1><p class="lead">Admin Login</p>
+<form id="loginForm" class="form">
+<div class="field"><label>Username</label><input id="username" required></div>
+<div class="field"><label>Password</label><input id="password" type="password" required></div>
+<button class="btn">LOGIN</button><div id="loginStatus" class="status"></div>
+</form></div></div>
+
+<div id="app" class="hidden">
+<header class="top"><div><div class="logo">GO2408ROOM Admin</div><div class="sub">Manage your GO & Jastip</div></div><button id="logoutBtn" class="btn gray">Logout</button></header>
+<main class="wrap">
+<h1>Dashboard</h1><p class="lead">Pilih layanan yang mau kamu kelola.</p>
+<div class="cards">
+<button class="card" onclick="openService('super')"><h3>GO Super Jajan</h3><p>Update, Payment Batch, Album Arrived & Link CO.</p></button>
+<button class="card" onclick="openService('efensi')"><h3>GO Efensi Stan</h3><p>Update, Payment Batch, Album Arrived & Link CO.</p></button>
+<button class="card" onclick="openService('concert')"><h3>Jastip Tiket Konser</h3><p>Jadwal konser, Bookslot & Form Jastip.</p></button>
+<button class="card" onclick="openService('jastip')"><h3>Jastip 2408roomstore</h3><p>Update, Payment Batch & Link CO.</p></button>
+</div></main></div>
+
+<div id="modal" class="modal"><div class="box">
+<div class="head"><div><h2 id="modalTitle"></h2><p id="modalSub" class="lead"></p></div><button class="x" onclick="closeModal()">✕</button></div>
+<div id="modalBody"></div></div></div>
+
+<script>
+const SERVICE_NAMES={super:'GO Super Jajan',efensi:'GO Efensi Stan',concert:'Jastip Tiket Konser',jastip:'Jastip 2408roomstore'};
+let activeService='';let customerCount=0;
+const $=id=>document.getElementById(id);
+
+async function checkAuth(){try{const r=await fetch('/api/auth',{credentials:'include'});r.ok?showApp():showLogin()}catch(e){showLogin()}}
+function showLogin(){$('loginView').classList.remove('hidden');$('app').classList.add('hidden')}
+function showApp(){$('loginView').classList.add('hidden');$('app').classList.remove('hidden');syncLocalBatches()}
+$('loginForm').onsubmit=async e=>{e.preventDefault();$('loginStatus').textContent='Memproses...';try{const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({username:$('username').value,password:$('password').value})});const d=await r.json();if(!r.ok)throw Error(d.error||'Login gagal');showApp()}catch(x){$('loginStatus').className='status err';$('loginStatus').textContent=x.message}};
+$('logoutBtn').onclick=async()=>{await fetch('/api/auth',{method:'DELETE',credentials:'include'});location.reload()};
+
+function openService(s){activeService=s;$('modalTitle').textContent=SERVICE_NAMES[s];$('modalSub').textContent='Pilih menu admin';
+let m='';
+if(s!=='concert')m=`<div class="menu">
+<button onclick="openForm('update')"><b>📝 Update Jajan / Order</b><span>Update order & status CO.</span></button>
+<button onclick="openForm('payment')"><b>💳 Payment Batch</b><span>1 batch berisi banyak customer.</span></button>
+${s!=='jastip'?`<button onclick="openForm('arrived')"><b>📦 Album Arrived INA</b><span>Upload update barang tiba.</span></button>`:''}
+<button onclick="openForm('link')"><b>🔗 Link CO</b><span>Tambah link checkout.</span></button>
+<button onclick="openDataList()"><b>📋 Lihat Data</b><span>Lihat, edit, dan hapus data yang sudah disimpan.</span></button></div>`;
+else m=`<div class="menu">
+<button onclick="openForm('schedule')"><b>📅 Jadwal Konser</b><span>Tambah jadwal konser.</span></button>
+<button onclick="openForm('bookslot')"><b>🎟️ Form Bookslot</b><span>Input form bookslot.</span></button>
+<button onclick="openForm('concertform')"><b>📝 Form Jastip Tiket</b><span>Input form jastip.</span></button>
+<button onclick="openDataList()"><b>📋 Lihat Data</b><span>Lihat data konser yang sudah disimpan.</span></button></div>`;
+$('modalBody').innerHTML=m;$('modal').classList.add('show')}
+function closeModal(){$('modal').classList.remove('show')}
+function back(){return `<div class="actions"><button type="button" class="btn gray" onclick="openService('${activeService}')">← Kembali</button></div>`}
+function openForm(t){$('modalTitle').textContent={payment:'Payment Batch',update:'Update Jajan / Order',arrived:'Album Arrived INA',link:'Link CO',schedule:'Jadwal Konser',bookslot:'Form Bookslot',concertform:'Form Jastip Tiket'}[t];$('modalSub').textContent=SERVICE_NAMES[activeService];({payment:paymentForm,update:updateForm,arrived:arrivedForm,link:linkForm,schedule:scheduleForm,bookslot:bookslotForm,concertform:concertForm}[t])()}
+
+function fileField(id,label,required=false){return `<div class="field"><label>${label}${required?' *':''}</label><div class="upload"><input id="${id}" type="file" accept="image/*" ${required?'required':''}><div id="${id}Status" class="status"></div><img id="${id}Preview" class="preview"></div></div>`}
+function preview(id){const f=$(id).files[0];if(f){$(id+'Preview').src=URL.createObjectURL(f);$(id+'Preview').style.display='block'}}
+async function uploadFile(file,statusId){
+if(!file)return '';$(statusId).textContent='Uploading...';
+const r=await fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({filename:file.name})});
+const d=await r.json();if(!r.ok)throw Error(d.error||'Gagal membuat upload URL');
+const put=await fetch(d.signedUrl,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});
+if(!put.ok)throw Error('Gagal upload file ke storage');$(statusId).className='status ok';$(statusId).textContent='✓ Upload berhasil';return d.path;
+}
+function get(key){return JSON.parse(localStorage.getItem(key)||'[]')}function save(key,x){localStorage.setItem(key,JSON.stringify(x))}
+
+function paymentForm(){
+customerCount=0;
+$('modalBody').innerHTML=`<form id="paymentForm" class="form">
+<div class="field"><label>Nama Batch *</label><input id="batchName" placeholder="Contoh: SJ Fancon Japan — Batch 03" required></div>
+${fileField('batchPhoto','Foto Proof Batch',true)}${fileField('qrisPhoto','Foto QRIS',true)}
+<div><label>List Customer</label><div id="customers"></div><button type="button" class="btn gray" style="margin-top:12px" onclick="addCustomer()">＋ Tambah Customer</button></div>
+<div id="saveStatus" class="status"></div>${back()}<div class="actions"><button class="btn" type="submit">Simpan Batch</button></div></form>`;
+addCustomer();$('batchPhoto').onchange=()=>preview('batchPhoto');$('qrisPhoto').onchange=()=>preview('qrisPhoto');$('paymentForm').onsubmit=savePaymentBatch;
+}
+function addCustomer(){
+const id=++customerCount,d=document.createElement('div');d.className='customer';d.id='customer-'+id;
+d.innerHTML=`<div class="customer-grid">
+<div class="field"><label>Nama</label><input class="c-name" required></div>
+<div class="field"><label>Barang / Jajanan</label><input class="c-items" placeholder="Contoh: Album + MD" required></div>
+<div class="field"><label>Harga</label><input class="c-total" type="number" min="0" placeholder="350000" required></div>
+<button type="button" class="remove" onclick="removeCustomer(${id})">Hapus</button></div>`;
+$('customers').appendChild(d)}
+function removeCustomer(id){if(document.querySelectorAll('.customer').length<=1)return alert('Minimal 1 customer.');$('customer-'+id).remove()}
+async function savePaymentBatch(e){
+e.preventDefault();const st=$('saveStatus');st.textContent='Menyimpan batch...';
+try{
+const bp=$('batchPhoto').files[0],qr=$('qrisPhoto').files[0];if(!bp||!qr)throw Error('Foto Proof Batch dan Foto QRIS wajib diupload.');
+const batchPhoto=await uploadFile(bp,'batchPhotoStatus'),qris=await uploadFile(qr,'qrisPhotoStatus');
+const customers=[...document.querySelectorAll('.customer')].map(x=>({name:x.querySelector('.c-name').value.trim(),items:x.querySelector('.c-items').value.trim(),total:Number(x.querySelector('.c-total').value),paymentProof:'',paymentStatus:'Belum Bayar'}));
+const batch={id:Date.now(),service:activeService,batch:$('batchName').value.trim(),batchPhoto,qris,customers,createdAt:new Date().toISOString()};
+const data=get('go2408_batches');
+const existingIndex=data.findIndex(x=>x.id===batch.id);
+if(existingIndex>=0)data[existingIndex]=batch;else data.push(batch);
+save('go2408_batches',data);
+const syncResponse=await fetch('/api/batches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(batch)});
+if(!syncResponse.ok){const err=await syncResponse.json().catch(()=>({}));throw Error(err.error||'Batch tersimpan di browser, tetapi gagal disimpan ke database.');}
+st.className='status ok';st.textContent=`✓ Batch tersimpan (${customers.length} customer).`;setTimeout(()=>openService(activeService),700)
+}catch(x){st.className='status err';st.textContent=x.message}
+}
+
+async function saveContent(type,payload){const r=await fetch('/api/content',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Date.now(),service:activeService,type,...payload})});const d=await r.json();if(!r.ok)throw Error(d.error||'Gagal menyimpan data.');return d}
+function updateForm(){$('modalBody').innerHTML=`<form id="f" class="form"><div class="field"><label>Nama Customer</label><input id="uName" required placeholder="Nama sesuai Google Sheets"></div><div class="field"><label>Catatan Update / Info Order</label><textarea id="uText" placeholder="Contoh: Barang sudah tiba / sedang diproses..."></textarea></div><div class="field"><label>Status</label><select id="uStatus"><option>Belum di CO</option><option>Sudah di CO</option><option>Diproses</option><option>Selesai</option></select></div>${fileField('uPhoto','Foto Update (opsional)')}<div id="s" class="status"></div>${back()}<div class="actions"><button class="btn">Simpan Update</button></div></form>`;$('uPhoto').onchange=()=>preview('uPhoto');$('f').onsubmit=async e=>{e.preventDefault();try{let p='';if($('uPhoto').files[0])p=await uploadFile($('uPhoto').files[0],'uPhotoStatus');await saveContent('update',{title:$('uName').value.trim(),note:$('uText').value,status:$('uStatus').value,photo:p});$('s').className='status ok';$('s').textContent='✓ Update tersimpan di database'}catch(x){$('s').className='status err';$('s').textContent=x.message}}}
+function arrivedForm(){$('modalBody').innerHTML=`<form id="f" class="form"><div class="field"><label>Judul</label><input id="aTitle" required></div><div class="field"><label>Catatan</label><textarea id="aNote"></textarea></div>${fileField('aPhoto','Foto Album Arrived',true)}<div id="s" class="status"></div>${back()}<div class="actions"><button class="btn">Simpan</button></div></form>`;$('aPhoto').onchange=()=>preview('aPhoto');$('f').onsubmit=async e=>{e.preventDefault();try{const p=await uploadFile($('aPhoto').files[0],'aPhotoStatus');await saveContent('album',{title:$('aTitle').value,note:$('aNote').value,photo:p});$('s').className='status ok';$('s').textContent='✓ Album tersimpan di database'}catch(x){$('s').className='status err';$('s').textContent=x.message}}}
+function linkForm(){$('modalBody').innerHTML=`<form id="f" class="form"><div class="field"><label>Nama / Judul Link</label><input id="lTitle" required></div><div class="field"><label>URL</label><input id="lUrl" type="url" required></div><div id="s" class="status"></div>${back()}<div class="actions"><button class="btn">Simpan Link</button></div></form>`;$('f').onsubmit=async e=>{e.preventDefault();try{await saveContent('link',{title:$('lTitle').value,url:$('lUrl').value});$('s').className='status ok';$('s').textContent='✓ Link tersimpan di database'}catch(x){$('s').className='status err';$('s').textContent=x.message}}}
+function scheduleForm(){$('modalBody').innerHTML=`<form id="f" class="form"><div class="field"><label>Nama Konser</label><input id="cName" required></div><div class="field"><label>Tanggal</label><input id="cDate" type="date" required></div><div class="field"><label>Kota / Venue</label><input id="cVenue"></div><div class="field"><label>Info</label><textarea id="cNote"></textarea></div>${fileField('cPhoto','Foto Jadwal (opsional)')}<div id="s" class="status"></div>${back()}<div class="actions"><button class="btn">Simpan Jadwal</button></div></form>`;$('cPhoto').onchange=()=>preview('cPhoto');$('f').onsubmit=async e=>{e.preventDefault();try{let p='';if($('cPhoto').files[0])p=await uploadFile($('cPhoto').files[0],'cPhotoStatus');await saveContent('schedule',{title:$('cName').value,date:$('cDate').value,venue:$('cVenue').value,note:$('cNote').value,photo:p});$('s').className='status ok';$('s').textContent='✓ Jadwal tersimpan'}catch(x){$('s').className='status err';$('s').textContent=x.message}}}
+function bookslotForm(){$('modalBody').innerHTML=`<form id="f" class="form"><div class="field"><label>Nama Konser</label><input id="bName" required></div><div class="field"><label>URL Form Bookslot</label><input id="bUrl" type="url" required></div><div class="field"><label>Info</label><textarea id="bNote"></textarea></div>${fileField('bPhoto','Foto (opsional)')}<div id="s" class="status"></div>${back()}<div class="actions"><button class="btn">Simpan</button></div></form>`;$('bPhoto').onchange=()=>preview('bPhoto');$('f').onsubmit=async e=>{e.preventDefault();try{let p='';if($('bPhoto').files[0])p=await uploadFile($('bPhoto').files[0],'bPhotoStatus');await saveContent('bookslot',{title:$('bName').value,url:$('bUrl').value,note:$('bNote').value,photo:p});$('s').className='status ok';$('s').textContent='✓ Form bookslot tersimpan'}catch(x){$('s').className='status err';$('s').textContent=x.message}}}
+function concertForm(){$('modalBody').innerHTML=`<form id="f" class="form"><div class="field"><label>Nama Konser</label><input id="jName" required></div><div class="field"><label>URL Form Jastip</label><input id="jUrl" type="url" required></div><div class="field"><label>Catatan</label><textarea id="jNote"></textarea></div>${fileField('jPhoto','Foto (opsional)')}<div id="s" class="status"></div>${back()}<div class="actions"><button class="btn">Simpan</button></div></form>`;$('jPhoto').onchange=()=>preview('jPhoto');$('f').onsubmit=async e=>{e.preventDefault();try{let p='';if($('jPhoto').files[0])p=await uploadFile($('jPhoto').files[0],'jPhotoStatus');await saveContent('concertform',{title:$('jName').value,url:$('jUrl').value,note:$('jNote').value,photo:p});$('s').className='status ok';$('s').textContent='✓ Form jastip tersimpan'}catch(x){$('s').className='status err';$('s').textContent=x.message}}}
+async function openDataList(){ $('modalTitle').textContent='Data Tersimpan';$('modalSub').textContent=SERVICE_NAMES[activeService];$('modalBody').innerHTML=back()+'<div class="lead">Memuat data...</div>';try{const r=await fetch('/api/content');const d=await r.json();if(!r.ok)throw Error(d.error||'Gagal membaca data.');const items=(d.items||[]).filter(x=>x.service===activeService);$('modalBody').innerHTML=back()+renderContentAdmin(items)}catch(e){$('modalBody').innerHTML=back()+`<div class="status err">${esc(e.message)}</div>`}}
+function renderContentAdmin(a){if(!a.length)return '<p class="lead">Belum ada data.</p>';return a.map(x=>`<div class="customer"><b>${esc(x.title)}</b><div class="lead">${esc(x.type)} ${esc(x.date||'')} ${esc(x.venue||'')}</div><div>${esc(x.note||'')}</div>${x.url?`<div style="word-break:break-all">${esc(x.url)}</div>`:''}<div class="actions" style="justify-content:flex-start"><button class="btn gray" onclick="deleteContent(${x.id})">Hapus</button></div></div>`).join('')}
+async function deleteContent(id){if(!confirm('Hapus data ini?'))return;const r=await fetch('/api/content?id='+encodeURIComponent(id),{method:'DELETE',credentials:'include'});const d=await r.json();if(!r.ok)return alert(d.error||'Gagal menghapus.');openDataList()}
+async function syncLocalBatches(){try{const batches=JSON.parse(localStorage.getItem('go2408_batches')||'[]');for(const batch of batches)await fetch('/api/batches',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(batch)})}catch(e){console.warn(e)}}
+checkAuth();
+</script>
+</body>
+</html>
