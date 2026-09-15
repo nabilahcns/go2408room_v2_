@@ -684,6 +684,108 @@ const esc =
     );
 
 
+/*
+ * Pesan khusus untuk customer.
+ * Error teknis seperti Supabase, API,
+ * Environment Variables, HTTP 500, dll
+ * tidak ditampilkan ke customer.
+ */
+function customerError(
+  message,
+  fallback = 'Maaf, informasi sedang tidak tersedia. Silakan coba lagi beberapa saat lagi.'
+) {
+
+  const text =
+    String(message || '').toLowerCase();
+
+  const technical = [
+    'supabase',
+    'environment',
+    'secret_key',
+    'publishable_key',
+    'api',
+    'postgrest',
+    'database',
+    'fetch',
+    'request',
+    'server',
+    'internal',
+    'unauthorized',
+    'http 4',
+    'http 5',
+    '500',
+    '401',
+    '403',
+    '404',
+    'url belum diatur',
+    'belum diatur di environment'
+  ];
+
+  if (
+    technical.some(
+      keyword =>
+        text.includes(keyword)
+    )
+  ) {
+    return fallback;
+  }
+
+  return fallback;
+}
+
+
+function paymentError(message) {
+
+  const text =
+    String(message || '').toLowerCase();
+
+  if (
+    text.includes('menunggu') ||
+    text.includes('pending')
+  ) {
+    return 'Bukti pembayaran kamu masih dalam proses verifikasi Admin.';
+  }
+
+  if (
+    text.includes('ditolak') ||
+    text.includes('rejected')
+  ) {
+    return 'Bukti pembayaran belum dapat diverifikasi. Silakan periksa kembali bukti pembayaran kamu.';
+  }
+
+  if (
+    text.includes('upload') ||
+    text.includes('file')
+  ) {
+    return 'Bukti pembayaran belum berhasil dikirim. Silakan coba upload kembali.';
+  }
+
+  return 'Maaf, informasi pembayaran sedang tidak tersedia. Silakan coba lagi beberapa saat lagi.';
+}
+
+
+function contentError(type) {
+
+  if (type === 'schedule') {
+    return 'Maaf, informasi konser sedang tidak tersedia. Silakan coba lagi beberapa saat lagi.';
+  }
+
+  if (type === 'bookslot') {
+    return 'Maaf, informasi bookslot sedang tidak tersedia. Silakan coba lagi beberapa saat lagi.';
+  }
+
+  if (type === 'concertform') {
+    return 'Maaf, informasi form jastip sedang tidak tersedia. Silakan coba lagi beberapa saat lagi.';
+  }
+
+  if (type === 'album') {
+    return 'Maaf, informasi album sedang tidak tersedia. Silakan coba lagi beberapa saat lagi.';
+  }
+
+  return 'Maaf, informasi sedang tidak tersedia. Silakan coba lagi beberapa saat lagi.';
+}
+
+
 function money(value){
 
   const x =
@@ -1111,7 +1213,7 @@ async function searchOrders(){
           .innerHTML =
           `
             <div class="rejected">
-              ${esc(error.message)}
+              ${esc(customerError(error.message))}
             </div>
           `;
 
@@ -1242,7 +1344,7 @@ async function paymentBatches(){
 
       `
         <div class="rejected">
-          ${esc(error.message)}
+          ${esc(customerError(error.message))}
         </div>
       `;
 
@@ -1700,7 +1802,7 @@ async function viewCustomer(index){
       .innerHTML =
       `
         <div class="rejected">
-          ${esc(error.message)}
+          ${esc(paymentError(error.message))}
         </div>
       `;
 
@@ -1951,7 +2053,7 @@ async function sendProof(){
       'rejected';
 
     status.textContent =
-      error.message;
+      paymentError(error.message);
 
   }
 
@@ -2223,7 +2325,7 @@ async function contentView(type){
 
       `
         <div class="rejected">
-          ${esc(error.message)}
+          ${esc(contentError(type))}
         </div>
       `;
 
