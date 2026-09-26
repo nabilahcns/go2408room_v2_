@@ -307,4 +307,935 @@ function editOrder(o){activeService='';$('modalTitle').textContent='Edit Order';
 async function loadStats(){try{const [b,s,c,o]=await Promise.all([api('/api/batches'),api('/api/payment-proof'),api('/api/content'),api('/api/orders')]);$('stBatches').textContent=(b.batches||[]).length;$('stPending').textContent=(s.submissions||[]).filter(x=>x.status==='pending').length;$('stOrders').textContent=(o.orders||[]).length;$('stContent').textContent=(c.items||[]).length}catch{}}
 checkAuth();
 </script>
+  <script>
+
+function getOrderRowNumber(o){
+
+  return Number(
+    o?.rowNumber ??
+    o?.row_number ??
+    o?.row ??
+    o?.metadata?.rowNumber ??
+    o?.metadata?.row_number ??
+    0
+  );
+
+}
+
+
+function getOrderSheetName(o){
+
+  return (
+    o?.sheetName ||
+    o?.sheet_name ||
+    o?.metadata?.sheetName ||
+    o?.metadata?.sheet_name ||
+    'REKAPAN'
+  );
+
+}
+
+
+async function findOrderForUpdate(){
+
+  const n =
+    $('ouSearch')
+      .value
+      .trim();
+
+  if(!n){
+    return;
+  }
+
+
+  const box =
+    $('ouResult');
+
+
+  box.innerHTML =
+    `
+      <div class="status">
+        Mencari semua order customer...
+      </div>
+    `;
+
+
+  try{
+
+    const d =
+      await api(
+        '/api/orders?name=' +
+        encodeURIComponent(n)
+      );
+
+
+    const orders =
+      (d.orders || [])
+      .map(
+        o => ({
+
+          ...o,
+
+          rowNumber:
+            getOrderRowNumber(o),
+
+          sheetName:
+            getOrderSheetName(o)
+
+        })
+      );
+
+
+    if(!orders.length){
+
+      box.innerHTML =
+        `
+          <div class="danger">
+            Customer tidak ditemukan.
+          </div>
+
+          ${back()}
+        `;
+
+      return;
+
+    }
+
+
+    $('modalSub')
+      .textContent =
+      `${
+        SERVICE_NAMES[activeService] ||
+        'Order Database'
+      } · ${orders.length} order ditemukan`;
+
+
+    let html =
+      `
+
+        <div class="success">
+
+          <b>
+            ${esc(
+              orders[0].name || n
+            )}
+          </b>
+
+          <br>
+
+          <span class="small">
+
+            Ditemukan ${orders.length}
+            order.
+
+            Pilih order yang mau
+            di-update.
+
+          </span>
+
+        </div>
+
+      `;
+
+
+    orders.forEach(
+      (o,i) => {
+
+        const country =
+          o.country ||
+          'LAINNYA';
+
+
+        const item =
+          o.item ||
+          'Tanpa nama barang';
+
+
+        const code =
+          o.code ||
+          '-';
+
+
+        const upd =
+          o.update ||
+          'Belum ada update';
+
+
+        const row =
+          o.rowNumber ||
+          '-';
+
+
+        const sheet =
+          o.sheetName ||
+          '-';
+
+
+        html +=
+        `
+
+          <div
+
+            class="order-choice"
+
+            onclick="
+              editSelectedUpdate(${i})
+            "
+
+          >
+
+            <div class="choice-top">
+
+              <div class="choice-title">
+
+                ${esc(item)}
+
+              </div>
+
+
+              <span class="pill">
+
+                ${esc(country)}
+
+              </span>
+
+            </div>
+
+
+            <div class="choice-meta">
+
+              Kode:
+              <b>${esc(code)}</b>
+
+              · Sheet:
+              ${esc(sheet)}
+
+              · Row:
+              <b>${esc(row)}</b>
+
+            </div>
+
+
+            <div class="choice-update">
+
+              ${esc(upd)}
+
+            </div>
+
+          </div>
+
+        `;
+
+      }
+    );
+
+
+    html +=
+
+      `
+
+        <div class="actions">
+
+          <button
+            type="button"
+            class="btn gray"
+            onclick="updateForm()">
+
+            ← Cari nama lain
+
+          </button>
+
+        </div>
+
+      `;
+
+
+    box.innerHTML =
+      html;
+
+
+    window._updateOrderChoices =
+      orders;
+
+
+  }catch(x){
+
+    box.innerHTML =
+      `
+
+        <div class="status err">
+
+          ${esc(
+            x.message
+          )}
+
+        </div>
+
+      `;
+
+  }
+
+}
+
+
+function editSelectedUpdate(index){
+
+  const choices =
+    window._updateOrderChoices ||
+    [];
+
+
+  const o =
+    choices[index];
+
+
+  if(!o){
+    return;
+  }
+
+
+  const rowNumber =
+    getOrderRowNumber(o);
+
+
+  const sheetName =
+    getOrderSheetName(o);
+
+
+  const code =
+    o.code ||
+    '';
+
+
+  /*
+   * Pastikan data teknis
+   * tetap tersimpan di object.
+   */
+
+  o.rowNumber =
+    rowNumber;
+
+  o.sheetName =
+    sheetName;
+
+
+  /*
+   * Kalau nomor row memang
+   * tidak ada, jangan lanjut
+   * ke proses simpan.
+   */
+
+  if(!rowNumber){
+
+    $('modalSub')
+      .textContent =
+      'Data order tidak lengkap';
+
+
+    $('ouResult')
+      .innerHTML =
+      `
+
+        <div class="danger">
+
+          Nomor row Google Sheets
+          untuk order ini tidak
+          terbaca.
+
+          <br><br>
+
+          Silakan kembali ke pilihan
+          order dan pilih ulang.
+
+        </div>
+
+
+        <div class="actions">
+
+          <button
+            type="button"
+            class="btn gray"
+            onclick="findOrderForUpdate()">
+
+            ← Kembali ke pilihan order
+
+          </button>
+
+        </div>
+
+      `;
+
+    return;
+
+  }
+
+
+  $('modalSub')
+    .textContent =
+    `${o.name} · ${sheetName} · Row ${rowNumber}`;
+
+
+  $('ouResult')
+    .innerHTML =
+    `
+
+      <div class="success">
+
+        <b>
+          ${esc(o.name)}
+        </b>
+
+        <br>
+
+        <span class="small">
+
+          ${esc(
+            o.item || '-'
+          )}
+
+          ·
+
+          ${esc(
+            code || '-'
+          )}
+
+          ·
+
+          ${esc(
+            o.country ||
+            'LAINNYA'
+          )}
+
+          · Sheet
+
+          ${esc(sheetName)}
+
+          · Row
+
+          ${esc(rowNumber)}
+
+        </span>
+
+      </div>
+
+
+      <form
+        id="ouForm"
+        class="form">
+
+
+        <div class="two">
+
+          <div class="field">
+
+            <label>
+              List Barang
+            </label>
+
+            <input
+              id="eItem"
+              value="${esc(
+                o.item
+              )}">
+
+          </div>
+
+
+          <div class="field">
+
+            <label>
+              Negara
+            </label>
+
+            <input
+              id="eCountry"
+              value="${esc(
+                o.country
+              )}">
+
+          </div>
+
+
+          <div class="field">
+
+            <label>
+              Grup Order
+            </label>
+
+            <input
+              id="eGroup"
+              value="${esc(
+                o.group
+              )}">
+
+          </div>
+
+
+          <div class="field">
+
+            <label>
+              Kode
+            </label>
+
+            <input
+              id="eCode"
+              value="${esc(
+                o.code
+              )}">
+
+          </div>
+
+        </div>
+
+
+        <div class="field">
+
+          <label>
+            Update Payment /
+            Update Info
+          </label>
+
+          <textarea
+            id="eUpdate">${esc(
+              o.update
+            )}</textarea>
+
+        </div>
+
+
+        <div class="field">
+
+          <label>
+            Total Payment Due
+          </label>
+
+          <input
+            id="eTotal"
+            value="${esc(
+              o.total
+            )}">
+
+        </div>
+
+
+        <div class="field">
+
+          <label>
+            Detail
+          </label>
+
+          <textarea
+            id="eDetail">${esc(
+              o.detail
+            )}</textarea>
+
+        </div>
+
+
+        <div class="field">
+
+          <label>
+            Status Website
+          </label>
+
+          <select id="eStatus">
+
+            <option ${
+              o.status ===
+              'Belum di CO'
+              ? 'selected'
+              : ''
+            }>
+              Belum di CO
+            </option>
+
+
+            <option ${
+              o.status ===
+              'Sudah di CO'
+              ? 'selected'
+              : ''
+            }>
+              Sudah di CO
+            </option>
+
+
+            <option ${
+              o.status ===
+              'Diproses'
+              ? 'selected'
+              : ''
+            }>
+              Diproses
+            </option>
+
+
+            <option ${
+              o.status ===
+              'Selesai'
+              ? 'selected'
+              : ''
+            }>
+              Selesai
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="field">
+
+          <label>
+            Catatan Status
+          </label>
+
+          <textarea
+            id="eNote">${esc(
+              o.statusNote
+            )}</textarea>
+
+        </div>
+
+
+        ${fileField(
+          'ePhoto',
+          'Foto Status (opsional)'
+        )}
+
+
+        <div
+          id="euStatus"
+          class="status">
+
+        </div>
+
+
+        <div class="actions">
+
+          <button
+            type="button"
+            class="btn gray"
+            onclick="findOrderForUpdate()">
+
+            ← Kembali ke pilihan order
+
+          </button>
+
+
+          <button
+            class="btn"
+            type="submit">
+
+            Simpan Perubahan
+
+          </button>
+
+        </div>
+
+
+      </form>
+
+    `;
+
+
+  $('ePhoto')
+    .onchange = () =>
+      preview('ePhoto');
+
+
+  $('ouForm')
+    .onsubmit =
+    async e => {
+
+      e.preventDefault();
+
+
+      const st =
+        $('euStatus');
+
+
+      st.className =
+        'status';
+
+
+      st.textContent =
+        'Menyimpan perubahan...';
+
+
+      try{
+
+
+        /*
+         * Pastikan row number
+         * menggunakan semua kemungkinan
+         * nama field.
+         */
+
+        const finalRow =
+          getOrderRowNumber(o);
+
+
+        const finalSheet =
+          getOrderSheetName(o);
+
+
+        if(!finalRow){
+
+          throw Error(
+            'Nomor row Google Sheets tidak terbaca.'
+          );
+
+        }
+
+
+        /*
+         * Upload foto kalau ada.
+         */
+
+        let p =
+          o.statusPhoto ||
+          '';
+
+
+        if(
+          $('ePhoto')
+            .files[0]
+        ){
+
+          p =
+            await uploadFile(
+              $('ePhoto')
+                .files[0],
+
+              'ePhotoStatus'
+            );
+
+        }
+
+
+        /*
+         * Simpan status website.
+         */
+
+        await api(
+          '/api/order-updates',
+          {
+
+            method:
+              'POST',
+
+            headers:{
+              'Content-Type':
+                'application/json'
+            },
+
+            body:
+              JSON.stringify({
+
+                id:
+                  Date.now(),
+
+                row_number:
+                  finalRow,
+
+                customer_name:
+                  o.name,
+
+                status:
+                  $('eStatus')
+                    .value,
+
+                note:
+                  $('eNote')
+                    .value,
+
+                photo:
+                  p
+
+              })
+
+          }
+
+        );
+
+
+        /*
+         * Siapkan data Google Sheets.
+         */
+
+        const vals =
+          Array.isArray(o.raw)
+            ? [...o.raw]
+            : [];
+
+
+        const c =
+          o.columns ||
+          {};
+
+
+        function put(
+          idx,
+          value
+        ){
+
+          if(
+            Number.isInteger(idx) &&
+            idx >= 0
+          ){
+
+            vals[idx] =
+              value;
+
+          }
+
+        }
+
+
+        put(
+          c.item,
+          $('eItem').value
+        );
+
+
+        put(
+          c.country,
+          $('eCountry').value
+        );
+
+
+        put(
+          c.group,
+          $('eGroup').value
+        );
+
+
+        put(
+          c.code,
+          $('eCode').value
+        );
+
+
+        put(
+          c.update,
+          $('eUpdate').value
+        );
+
+
+        put(
+          c.total,
+          $('eTotal').value
+        );
+
+
+        put(
+          c.detail,
+          $('eDetail').value
+        );
+
+
+        /*
+         * Update Google Sheets.
+         */
+
+        await api(
+          '/api/sheets',
+          {
+
+            method:
+              'POST',
+
+            headers:{
+              'Content-Type':
+                'application/json'
+            },
+
+            body:
+              JSON.stringify({
+
+                rowNumber:
+                  finalRow,
+
+                sheetName:
+                  finalSheet,
+
+                values:
+                  vals
+
+              })
+
+          }
+
+        );
+
+
+        /*
+         * Update data lokal.
+         */
+
+        o.item =
+          $('eItem').value;
+
+
+        o.country =
+          $('eCountry').value;
+
+
+        o.group =
+          $('eGroup').value;
+
+
+        o.code =
+          $('eCode').value;
+
+
+        o.update =
+          $('eUpdate').value;
+
+
+        o.total =
+          $('eTotal').value;
+
+
+        o.detail =
+          $('eDetail').value;
+
+
+        o.status =
+          $('eStatus').value;
+
+
+        o.statusNote =
+          $('eNote').value;
+
+
+        o.statusPhoto =
+          p;
+
+
+        st.className =
+          'status ok';
+
+
+        st.textContent =
+          '✓ Website + Google Sheets berhasil di-update.';
+
+
+      }catch(err){
+
+        st.className =
+          'status err';
+
+
+        st.textContent =
+          err.message;
+
+      }
+
+    };
+
+}
+
+</script>
 </body></html>
