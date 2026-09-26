@@ -1,4 +1,5 @@
-import { isAdmin, sb } from './_supabase.js';
+import crypto from 'crypto';
+
 
 const BRIDGE_URL =
   process.env.GOOGLE_SHEETS_BRIDGE_URL || '';
@@ -10,32 +11,152 @@ const SHEET_EDIT_URL =
   process.env.GOOGLE_SHEET_EDIT_URL || '';
 
 
+/*
+ * ============================
+ * ADMIN AUTH
+ * Tidak bergantung Supabase
+ * ============================
+ */
+
+function verifyToken(token) {
+
+  try {
+
+    if (!token) {
+      return false;
+    }
+
+
+    const parts =
+      token.split('.');
+
+
+    if (parts.length !== 2) {
+      return false;
+    }
+
+
+    const [
+      encoded,
+      signature
+    ] = parts;
+
+
+    const expected =
+      crypto
+        .createHmac(
+          'sha256',
+          process.env.AUTH_SECRET
+        )
+        .update(encoded)
+        .digest('base64url');
+
+
+    if (signature !== expected) {
+      return false;
+    }
+
+
+    const data =
+      JSON.parse(
+        Buffer
+          .from(
+            encoded,
+            'base64url'
+          )
+          .toString()
+      );
+
+
+    if (
+      !data?.exp ||
+      data.exp < Date.now()
+    ) {
+      return false;
+    }
+
+
+    return (
+      data.username ===
+      process.env.ADMIN_USERNAME
+    );
+
+
+  } catch {
+
+    return false;
+
+  }
+
+}
+
+
+function isAdmin(req) {
+
+  const cookies =
+    req.headers.cookie || '';
+
+
+  const match =
+    cookies.match(
+      /admin_session=([^;]+)/
+    );
+
+
+  return verifyToken(
+    match
+      ? match[1]
+      : null
+  );
+
+}
+
+
+/*
+ * ============================
+ * HELPERS
+ * ============================
+ */
+
 function clean(value) {
-  return String(value ?? '').trim();
+
+  return String(
+    value ?? ''
+  ).trim();
+
 }
 
 
 function normalize(value) {
+
   return clean(value)
     .toLowerCase()
     .replace(/\s+/g, ' ');
+
 }
 
 
 function deriveCountry(order) {
 
   const sheet =
-    normalize(order.sheetName);
+    normalize(
+      order?.sheetName
+    );
+
 
   const code =
-    clean(order.code).toUpperCase();
+    clean(
+      order?.code
+    ).toUpperCase();
 
 
   if (
     sheet.includes('china') ||
     code.startsWith('CH')
   ) {
+
     return 'CHINA';
+
   }
 
 
@@ -44,7 +165,9 @@ function deriveCountry(order) {
     code.startsWith('KR') ||
     code.startsWith('RI')
   ) {
+
     return 'KOREA';
+
   }
 
 
@@ -53,7 +176,9 @@ function deriveCountry(order) {
     sheet.includes('japan') ||
     code.startsWith('JP')
   ) {
+
     return 'JEPANG';
+
   }
 
 
@@ -61,7 +186,9 @@ function deriveCountry(order) {
     sheet.includes('thailand') ||
     code.startsWith('TH')
   ) {
+
     return 'THAILAND';
+
   }
 
 
@@ -70,7 +197,9 @@ function deriveCountry(order) {
     sheet.includes('philiph') ||
     code.startsWith('PH')
   ) {
+
     return 'PHILIPPINES';
+
   }
 
 
@@ -79,98 +208,168 @@ function deriveCountry(order) {
 }
 
 
+/*
+ * ============================
+ * NORMALIZE ORDER
+ * ============================
+ */
+
 function normalizeOrder(order) {
 
+  const rowNumber =
+    Number(
+      order?.rowNumber ??
+      order?.row_number ??
+      order?.row ??
+      0
+    );
+
+
+  const sheetName =
+    clean(
+      order?.sheetName ??
+      order?.sheet_name ??
+      ''
+    );
+
+
   const columns =
-    order?.columns ||
-    {};
+    order?.columns &&
+    typeof order.columns === 'object'
+      ? order.columns
+      : {};
 
 
-  return {
+  const headers =
+    Array.isArray(
+      order?.headers
+    )
+      ? order.headers
+      : [];
+
+
+  const raw =
+    Array.isArray(
+      order?.raw
+    )
+      ? order.raw
+      : [];
+
+
+  const result = {
 
     /*
-     * IDENTITAS GOOGLE SHEETS
-     * Ini yang paling penting untuk
-     * proses Edit / Update.
+     * Google Sheets identity
      */
 
-    sheetName:
-      clean(order?.sheetName),
+    sheetName,
 
-    rowNumber:
-      Number(order?.rowNumber) || 0,
+    sheet_name:sheetName,
+
+    rowNumber,
+
+    row_number:rowNumber,
 
     headerRow:
-      Number(order?.headerRow) || 1,
+      Number(
+        order?.headerRow ??
+        order?.header_row ??
+        1
+      ),
 
-    headers:
-      Array.isArray(order?.headers)
-        ? order.headers
-        : [],
+    headers,
 
+    columns,
 
-    /*
-     * MAPPING KOLOM
-     */
-
-    columns:columns,
+    raw,
 
 
     /*
-     * RAW ROW
-     * Dipakai saat menulis kembali
-     * ke Google Sheets.
-     */
-
-    raw:
-      Array.isArray(order?.raw)
-        ? order.raw
-        : [],
-
-
-    /*
-     * DATA ORDER
+     * Order data
      */
 
     name:
-      clean(order?.name),
+      clean(
+        order?.name
+      ),
 
     item:
-      clean(order?.item),
+      clean(
+        order?.item
+      ),
 
     country:
-      order?.country
-        ? clean(order.country).toUpperCase()
-        : deriveCountry(order),
+      clean(
+        order?.country
+      ).toUpperCase(),
 
     group:
-      clean(order?.group),
+      clean(
+        order?.group
+      ),
 
     code:
-      clean(order?.code),
+      clean(
+        order?.code
+      ),
 
     update:
-      clean(order?.update),
+      clean(
+        order?.update
+      ),
 
     payment:
-      clean(order?.payment),
+      clean(
+        order?.payment
+      ),
 
     total:
-      clean(order?.total),
+      clean(
+        order?.total
+      ),
 
     paymentDue:
-      clean(order?.paymentDue),
+      clean(
+        order?.paymentDue
+      ),
 
     detail:
-      clean(order?.detail)
-
+      clean(
+        order?.detail
+      )
 
   };
+
+
+  /*
+   * Country kosong → derive dari
+   * nama sheet / kode.
+   */
+
+  if (!result.country) {
+
+    result.country =
+      deriveCountry(
+        result
+      );
+
+  }
+
+
+  return result;
 
 }
 
 
-async function fetchFromAppsScript(search = '') {
+/*
+ * ============================
+ * GOOGLE SHEETS BRIDGE
+ * ============================
+ */
+
+async function fetchFromAppsScript(
+  search = ''
+) {
 
   if (!BRIDGE_URL) {
 
@@ -191,7 +390,9 @@ async function fetchFromAppsScript(search = '') {
 
 
   const url =
-    new URL(BRIDGE_URL);
+    new URL(
+      BRIDGE_URL
+    );
 
 
   url.searchParams.set(
@@ -214,7 +415,12 @@ async function fetchFromAppsScript(search = '') {
     await fetch(
       url.toString(),
       {
-        method:'GET'
+        method:'GET',
+
+        headers:{
+          Accept:
+            'application/json'
+        }
       }
     );
 
@@ -223,7 +429,7 @@ async function fetchFromAppsScript(search = '') {
     await response.text();
 
 
-  let data = null;
+  let data;
 
 
   try {
@@ -231,7 +437,7 @@ async function fetchFromAppsScript(search = '') {
     data =
       raw
         ? JSON.parse(raw)
-        : null;
+        : {};
 
   } catch {
 
@@ -246,7 +452,7 @@ async function fetchFromAppsScript(search = '') {
 
     throw new Error(
       data?.error ||
-      'Google Sheets bridge gagal diakses.'
+      `Google Sheets bridge gagal (${response.status}).`
     );
 
   }
@@ -270,113 +476,76 @@ async function fetchFromAppsScript(search = '') {
 }
 
 
-async function getWebsiteStatuses() {
+/*
+ * ============================
+ * EXTRACT ORDERS
+ * ============================
+ */
 
-  try {
+function extractOrders(data) {
 
-    const rows =
-      await sb(
-        'order_updates?select=id,row_number,customer_name,status,note,photo,updated_at&order=updated_at.desc',
-        {
-          method:'GET'
-        }
-      );
-
-
-    return Array.isArray(rows)
-      ? rows
-      : [];
-
-
-  } catch {
-
-    return [];
-
-  }
-
-}
-
-
-function attachStatuses(
-  orders,
-  updates
-) {
-
-  const statusMap =
-    new Map();
-
-
-  for (
-    const update
-    of updates
+  if (
+    Array.isArray(
+      data?.orders
+    )
   ) {
 
-    const row =
-      Number(
-        update?.row_number
-      );
-
-
-    if (
-      !row ||
-      !Number.isFinite(row)
-    ) {
-      continue;
-    }
-
-
-    /*
-     * Ambil update terbaru
-     * untuk row tersebut.
-     */
-
-    if (
-      !statusMap.has(row)
-    ) {
-
-      statusMap.set(
-        row,
-        update
-      );
-
-    }
+    return data.orders;
 
   }
 
 
-  return orders.map(
-    order => {
+  if (
+    Array.isArray(
+      data?.rows
+    )
+  ) {
 
-      const update =
-        statusMap.get(
-          Number(order.rowNumber)
-        );
+    return data.rows;
+
+  }
 
 
-      return {
+  if (
+    Array.isArray(
+      data?.data
+    )
+  ) {
 
-        ...order,
+    return data.data;
 
-        status:
-          update?.status ||
-          'Belum di CO',
+  }
 
-        statusNote:
-          update?.note || '',
 
-        statusPhoto:
-          update?.photo || '',
+  /*
+   * Kalau bridge hanya mengirim
+   * satu object order.
+   */
 
-        statusUpdatedAt:
-          update?.updated_at || ''
+  if (
+    data &&
+    typeof data === 'object' &&
+    (
+      data.name ||
+      data.NAMA
+    )
+  ) {
 
-      };
+    return [data];
 
-    }
-  );
+  }
+
+
+  return [];
 
 }
 
+
+/*
+ * ============================
+ * MAIN API
+ * ============================
+ */
 
 export default async function handler(
   req,
@@ -393,17 +562,15 @@ export default async function handler(
       return res
         .status(405)
         .json({
-          error:'Method not allowed'
+          error:
+            'Method not allowed'
         });
 
     }
 
 
     /*
-     * CUSTOMER
-     *
-     * Customer wajib mencari
-     * berdasarkan nama.
+     * Ambil query nama.
      */
 
     const search =
@@ -411,6 +578,14 @@ export default async function handler(
         req.query?.name
       );
 
+
+    /*
+     * Admin boleh melihat
+     * semua data.
+     *
+     * Customer harus mencari
+     * berdasarkan nama.
+     */
 
     const admin =
       isAdmin(req);
@@ -424,16 +599,17 @@ export default async function handler(
       return res
         .status(400)
         .json({
+
           error:
             'Nama customer wajib diisi.'
+
         });
 
     }
 
 
     /*
-     * Ambil semua order
-     * dari Google Sheets bridge.
+     * Ambil dari Google Sheets.
      */
 
     const bridgeData =
@@ -442,70 +618,25 @@ export default async function handler(
       );
 
 
-    let sourceOrders =
-      [];
-
-
     /*
-     * Bentuk response Apps Script
-     * yang kita dukung:
-     *
-     * { orders:[...] }
-     */
-
-    if (
-      Array.isArray(
-        bridgeData?.orders
-      )
-    ) {
-
-      sourceOrders =
-        bridgeData.orders;
-
-    }
-
-
-    /*
-     * Beberapa response lama
-     * mungkin memakai rows.
-     */
-
-    else if (
-      Array.isArray(
-        bridgeData?.rows
-      )
-    ) {
-
-      sourceOrders =
-        bridgeData.rows;
-
-    }
-
-
-    /*
-     * Kalau response hanya 1
-     * object order.
-     */
-
-    else if (
-      bridgeData &&
-      typeof bridgeData === 'object' &&
-      bridgeData.name
-    ) {
-
-      sourceOrders =
-        [bridgeData];
-
-    }
-
-
-    /*
-     * Normalize seluruh order.
+     * Extract order.
      */
 
     let orders =
-      sourceOrders
-        .map(normalizeOrder)
+      extractOrders(
+        bridgeData
+      );
+
+
+    /*
+     * Normalize semua order.
+     */
+
+    orders =
+      orders
+        .map(
+          normalizeOrder
+        )
         .filter(
           order =>
             order.name ||
@@ -515,10 +646,11 @@ export default async function handler(
 
 
     /*
-     * Filter nama sekali lagi
-     * di server supaya aman
-     * walaupun Apps Script
-     * mengembalikan lebih banyak data.
+     * Filter nama di sisi server.
+     *
+     * Ini membuat pencarian lebih
+     * aman walaupun bridge
+     * mengirim lebih banyak data.
      */
 
     if (search) {
@@ -539,26 +671,47 @@ export default async function handler(
 
 
     /*
-     * Ambil status website.
-     *
-     * Untuk admin dan customer,
-     * status akan digabungkan
-     * berdasarkan row Google Sheets.
+     * Urutkan berdasarkan nama sheet
+     * lalu row.
      */
 
-    const updates =
-      await getWebsiteStatuses();
+    orders.sort(
+      (a,b)=>{
+
+        const sheetCompare =
+          String(
+            a.sheetName
+          ).localeCompare(
+            String(
+              b.sheetName
+            )
+          );
 
 
-    orders =
-      attachStatuses(
-        orders,
-        updates
-      );
+        if (
+          sheetCompare !== 0
+        ) {
+
+          return sheetCompare;
+
+        }
+
+
+        return (
+          Number(
+            a.rowNumber
+          ) -
+          Number(
+            b.rowNumber
+          )
+        );
+
+      }
+    );
 
 
     /*
-     * RESPONSE
+     * Response.
      */
 
     return res
@@ -568,33 +721,39 @@ export default async function handler(
         success:true,
 
         spreadsheetName:
-          bridgeData?.spreadsheetName || '',
+          bridgeData?.spreadsheetName ||
+          bridgeData?.spreadsheet_name ||
+          '',
 
-        search:
-          search,
+        search,
 
         totalOrders:
           orders.length,
 
+        /*
+         * Kalau hanya satu order,
+         * metadata langsung diisi.
+         */
+
         sheetName:
           orders.length === 1
             ? orders[0].sheetName
-            : bridgeData?.sheetName || '',
+            : '',
 
         headerRow:
           orders.length === 1
             ? orders[0].headerRow
-            : bridgeData?.headerRow || 1,
+            : 1,
 
         headers:
           orders.length === 1
             ? orders[0].headers
-            : bridgeData?.headers || [],
+            : [],
 
         columns:
           orders.length === 1
             ? orders[0].columns
-            : bridgeData?.columns || {},
+            : {},
 
         sheetEditUrl:
           SHEET_EDIT_URL,
