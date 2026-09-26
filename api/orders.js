@@ -30,6 +30,7 @@ function headerKey(value){
 
 
 function valueFromColumn(row, key){
+
   const columns =
     row.columns || {};
 
@@ -48,11 +49,15 @@ function valueFromColumn(row, key){
     return '';
   }
 
-  return text(raw[index]);
+  return text(
+    raw[index]
+  );
+
 }
 
 
 function findHeaderValue(row, names){
+
   const headers =
     Array.isArray(row.headers)
       ? row.headers
@@ -64,93 +69,172 @@ function findHeaderValue(row, names){
       : [];
 
   const wanted =
-    names.map(headerKey);
+    names.map(
+      headerKey
+    );
 
-  for(let i = 0; i < headers.length; i++){
+
+  for(
+    let i = 0;
+    i < headers.length;
+    i++
+  ){
 
     const key =
-      headerKey(headers[i]);
+      headerKey(
+        headers[i]
+      );
 
-    if(wanted.includes(key)){
-      return text(raw[i]);
+
+    if(
+      wanted.includes(key)
+    ){
+      return text(
+        raw[i]
+      );
     }
 
   }
 
+
   return '';
+
 }
 
 
 /* =========================
-   GOOGLE SHEETS BRIDGE
+   DETEKSI NEGARA
 ========================= */
 
-async function fetchFromAppsScript(name = ''){
+function deriveCountry(row){
 
-  if(!BRIDGE_URL){
-    throw Error(
-      'GOOGLE_SHEETS_BRIDGE_URL belum tersedia.'
+  /*
+    Kalau Google Sheets
+    sudah punya country,
+    gunakan itu.
+  */
+
+  const existing =
+    text(
+      row.country
     );
-  }
-
-  if(!BRIDGE_TOKEN){
-    throw Error(
-      'GOOGLE_SHEETS_BRIDGE_TOKEN belum tersedia.'
-    );
-  }
 
 
-  const url =
-    new URL(BRIDGE_URL);
-
-  url.searchParams.set(
-    'token',
-    BRIDGE_TOKEN
-  );
-
-
-  if(name){
-    url.searchParams.set(
-      'name',
-      name
-    );
+  if(existing){
+    return existing;
   }
 
 
-  const response =
-    await fetch(
-      url.toString(),
-      {
-        cache:'no-store'
-      }
+  const sheet =
+    normalize(
+      row.sheetName
     );
 
 
-  const data =
-    await response
-      .json()
-      .catch(
-        () => null
-      );
+  const code =
+    text(
+      row.code
+    ).toUpperCase();
 
 
-  if(!response.ok){
-    throw Error(
-      data?.error ||
-      'Google Sheets bridge gagal.'
-    );
+  /*
+    Berdasarkan nama sheet
+  */
+
+  if(
+    sheet.includes('korea')
+  ){
+    return 'KOREA';
   }
 
 
-  if(!data?.success){
-    throw Error(
-      data?.error ||
-      'Google Sheets tidak mengembalikan data.'
-    );
+  if(
+    sheet.includes('china')
+  ){
+    return 'CHINA';
   }
 
 
-  return data;
+  if(
+    sheet.includes('jepang')
+  ){
+    return 'JEPANG';
+  }
+
+
+  if(
+    sheet.includes('japan')
+  ){
+    return 'JEPANG';
+  }
+
+
+  if(
+    sheet.includes('thailand')
+  ){
+    return 'THAILAND';
+  }
+
+
+  if(
+    sheet.includes('philiphina')
+  ){
+    return 'PHILIPPINES';
+  }
+
+
+  if(
+    sheet.includes('philippines')
+  ){
+    return 'PHILIPPINES';
+  }
+
+
+  /*
+    Berdasarkan kode order
+  */
+
+  if(
+    code.startsWith('CH')
+  ){
+    return 'CHINA';
+  }
+
+
+  if(
+    code.startsWith('KR')
+  ){
+    return 'KOREA';
+  }
+
+
+  if(
+    code.startsWith('JP')
+  ){
+    return 'JEPANG';
+  }
+
+
+  if(
+    code.startsWith('TH')
+  ){
+    return 'THAILAND';
+  }
+
+
+  if(
+    code.startsWith('PH')
+  ){
+    return 'PHILIPPINES';
+  }
+
+
+  /*
+    Kalau tidak terdeteksi
+  */
+
+  return 'LAINNYA';
+
 }
 
 
@@ -180,6 +264,11 @@ function normalizeOrder(row){
     );
 
 
+  /*
+    Beberapa sheet menggunakan
+    HARGA, bukan PAYMENT / TOTAL.
+  */
+
   const harga =
     findHeaderValue(
       row,
@@ -191,14 +280,7 @@ function normalizeOrder(row){
 
 
   /*
-    Untuk sheet lama:
-    PAYMENT ada,
-    TOTAL ada / tidak ada.
-
-    Untuk sheet seperti HANDCARRY:
-    hanya ada HARGA.
-
-    Jadi total website akan memakai:
+    Urutan:
     TOTAL → PAYMENT → HARGA
   */
 
@@ -231,12 +313,8 @@ function normalizeOrder(row){
 
 
     country:
-      text(
-        row.country ||
-        valueFromColumn(
-          row,
-          'country'
-        )
+      deriveCountry(
+        row
       ),
 
 
@@ -297,15 +375,13 @@ function normalizeOrder(row){
 
 
     /*
-      ID unik per baris.
-      Penting karena sekarang
-      banyak sheet memiliki
-      nomor row yang sama.
+      ID unik untuk setiap
+      order berdasarkan sheet
+      + nomor row.
     */
 
     orderId:
       `${text(row.sheetName)}:${Number(row.rowNumber || 0)}`
-
 
   };
 
@@ -313,7 +389,98 @@ function normalizeOrder(row){
 
 
 /* =========================
-   HANDLER
+   GOOGLE SHEETS BRIDGE
+========================= */
+
+async function fetchFromAppsScript(
+  name = ''
+){
+
+  if(!BRIDGE_URL){
+
+    throw Error(
+      'GOOGLE_SHEETS_BRIDGE_URL belum tersedia.'
+    );
+
+  }
+
+
+  if(!BRIDGE_TOKEN){
+
+    throw Error(
+      'GOOGLE_SHEETS_BRIDGE_TOKEN belum tersedia.'
+    );
+
+  }
+
+
+  const url =
+    new URL(
+      BRIDGE_URL
+    );
+
+
+  url.searchParams.set(
+    'token',
+    BRIDGE_TOKEN
+  );
+
+
+  if(name){
+
+    url.searchParams.set(
+      'name',
+      name
+    );
+
+  }
+
+
+  const response =
+    await fetch(
+      url.toString(),
+      {
+        cache:
+          'no-store'
+      }
+    );
+
+
+  const data =
+    await response
+      .json()
+      .catch(
+        () => null
+      );
+
+
+  if(!response.ok){
+
+    throw Error(
+      data?.error ||
+      'Google Sheets bridge gagal.'
+    );
+
+  }
+
+
+  if(!data?.success){
+
+    throw Error(
+      data?.error ||
+      'Google Sheets tidak mengembalikan data.'
+    );
+
+  }
+
+
+  return data;
+
+}
+
+
+/* =========================
+   API HANDLER
 ========================= */
 
 export default async function handler(
@@ -323,18 +490,25 @@ export default async function handler(
 
   try{
 
-    if(req.method !== 'GET'){
+    if(
+      req.method !== 'GET'
+    ){
+
       return res
         .status(405)
         .json({
           success:false,
-          error:'Method tidak diizinkan.'
+          error:
+            'Method tidak diizinkan.'
         });
+
     }
 
 
     const admin =
-      isAdmin(req);
+      isAdmin(
+        req
+      );
 
 
     const name =
@@ -344,20 +518,24 @@ export default async function handler(
 
 
     /*
-      Customer WAJIB mencari
-      berdasarkan nama.
+      Customer harus
+      mencari berdasarkan nama.
 
-      Hanya admin yang boleh
-      meminta semua order.
+      Admin boleh mengambil
+      semua data.
     */
 
-    if(!name && !admin){
+    if(
+      !name &&
+      !admin
+    ){
 
       return res
         .status(400)
         .json({
           success:false,
-          error:'Nama customer wajib diisi.'
+          error:
+            'Nama customer wajib diisi.'
         });
 
     }
@@ -370,15 +548,90 @@ export default async function handler(
 
 
     const sourceOrders =
-      Array.isArray(data.orders)
+      Array.isArray(
+        data.orders
+      )
         ? data.orders
         : [];
 
 
+    /*
+      Admin membutuhkan
+      informasi lengkap:
+      sheet, row, headers,
+      columns, raw.
+
+      Customer hanya mendapatkan
+      data order yang sudah
+      dinormalisasi.
+    */
+
     const orders =
       sourceOrders
         .map(
-          normalizeOrder
+          row => {
+
+            const order =
+              normalizeOrder(
+                row
+              );
+
+
+            if(admin){
+
+              return {
+
+                ...order,
+
+
+                sheetName:
+                  text(
+                    row.sheetName
+                  ),
+
+
+                rowNumber:
+                  Number(
+                    row.rowNumber ||
+                    0
+                  ),
+
+
+                headerRow:
+                  Number(
+                    row.headerRow ||
+                    1
+                  ),
+
+
+                headers:
+                  Array.isArray(
+                    row.headers
+                  )
+                    ? row.headers
+                    : [],
+
+
+                columns:
+                  row.columns ||
+                  {},
+
+
+                raw:
+                  Array.isArray(
+                    row.raw
+                  )
+                    ? row.raw
+                    : []
+
+              };
+
+            }
+
+
+            return order;
+
+          }
         )
         .filter(
           order =>
@@ -389,63 +642,96 @@ export default async function handler(
 
 
     /*
-      Untuk keamanan:
-      customer tidak perlu melihat
-      raw Google Sheets / struktur sheet.
+      Rapikan hasil berdasarkan
+      negara.
 
-      Admin boleh melihat semuanya
-      karena dipakai untuk edit.
+      Urutan negara:
+      CHINA
+      KOREA
+      JEPANG
+      THAILAND
+      PHILIPPINES
+      LAINNYA
     */
 
-    const resultOrders =
-      admin
-        ? sourceOrders
-            .map(
-              (row) => ({
-                ...normalizeOrder(row),
+    const countryOrder = [
+      'CHINA',
+      'KOREA',
+      'JEPANG',
+      'THAILAND',
+      'PHILIPPINES',
+      'LAINNYA'
+    ];
 
-                sheetName:
-                  text(
-                    row.sheetName
-                  ),
 
-                rowNumber:
-                  Number(
-                    row.rowNumber || 0
-                  ),
+    orders.sort(
+      (a,b) => {
 
-                headerRow:
-                  Number(
-                    row.headerRow || 1
-                  ),
+        const countryA =
+          countryOrder.indexOf(
+            a.country
+          );
 
-                headers:
-                  Array.isArray(
-                    row.headers
-                  )
-                    ? row.headers
-                    : [],
 
-                columns:
-                  row.columns || {},
+        const countryB =
+          countryOrder.indexOf(
+            b.country
+          );
 
-                raw:
-                  Array.isArray(
-                    row.raw
-                  )
-                    ? row.raw
-                    : []
 
-              })
+        if(
+          countryA !== countryB
+        ){
+
+          return (
+            (countryA === -1
+              ? 999
+              : countryA)
+            -
+            (countryB === -1
+              ? 999
+              : countryB)
+          );
+
+        }
+
+
+        /*
+          Kalau negaranya sama,
+          row yang lebih besar
+          ditaruh lebih atas.
+        */
+
+        const rowA =
+          Number(
+            a.rowNumber ||
+            String(
+              a.orderId ||
+              ''
             )
-            .filter(
-              order =>
-                order.name ||
-                order.item ||
-                order.code
-            )
+            .split(':')
+            .pop() ||
+            0
+          );
 
-        : orders;
+
+        const rowB =
+          Number(
+            b.rowNumber ||
+            String(
+              b.orderId ||
+              ''
+            )
+            .split(':')
+            .pop() ||
+            0
+          );
+
+
+        return rowB - rowA;
+
+      }
+    );
 
 
     return res
@@ -454,19 +740,22 @@ export default async function handler(
 
         success:true,
 
+
         spreadsheetName:
           text(
             data.spreadsheetName
           ),
 
+
         search:
           name,
 
-        totalOrders:
-          resultOrders.length,
 
-        orders:
-          resultOrders
+        totalOrders:
+          orders.length,
+
+
+        orders
 
       });
 
