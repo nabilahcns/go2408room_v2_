@@ -3,9 +3,9 @@ import crypto from 'crypto';
 const TABLE = 'order_updates';
 
 
-/* =========================
+/* =========================================
    CEK LOGIN ADMIN
-========================= */
+========================================= */
 
 function verifyToken(token) {
 
@@ -15,22 +15,18 @@ function verifyToken(token) {
       return false;
     }
 
-
     const parts =
       token.split('.');
-
 
     if (parts.length !== 2) {
       return false;
     }
-
 
     const encoded =
       parts[0];
 
     const signature =
       parts[1];
-
 
     const expected =
       crypto
@@ -41,14 +37,12 @@ function verifyToken(token) {
         .update(encoded)
         .digest('base64url');
 
-
     if (
       signature !==
       expected
     ) {
       return false;
     }
-
 
     const data =
       JSON.parse(
@@ -60,7 +54,6 @@ function verifyToken(token) {
           .toString()
       );
 
-
     if (
       !data?.exp ||
       data.exp <
@@ -68,7 +61,6 @@ function verifyToken(token) {
     ) {
       return false;
     }
-
 
     return (
       data.username ===
@@ -89,12 +81,10 @@ function isAdmin(req) {
   const cookies =
     req.headers.cookie || '';
 
-
   const match =
     cookies.match(
       /admin_session=([^;]+)/
     );
-
 
   return verifyToken(
     match
@@ -105,9 +95,9 @@ function isAdmin(req) {
 }
 
 
-/* =========================
-   SUPABASE
-========================= */
+/* =========================================
+   SUPABASE HELPER
+========================================= */
 
 async function supabase(
   path,
@@ -116,7 +106,6 @@ async function supabase(
 
   const base =
     process.env.SUPABASE_URL;
-
 
   const key =
     process.env.SUPABASE_SECRET_KEY;
@@ -209,9 +198,9 @@ async function supabase(
 }
 
 
-/* =========================
-   API
-========================= */
+/* =========================================
+   API HANDLER
+========================================= */
 
 export default async function handler(
   req,
@@ -221,9 +210,9 @@ export default async function handler(
   try {
 
 
-    /* =========================
-       ADMIN CHECK
-    ========================= */
+    /* =====================================
+       ADMIN ONLY
+    ===================================== */
 
     if (
       !isAdmin(req)
@@ -241,9 +230,9 @@ export default async function handler(
     }
 
 
-    /* =========================
+    /* =====================================
        GET
-    ========================= */
+    ===================================== */
 
     if (
       req.method === 'GET'
@@ -251,7 +240,15 @@ export default async function handler(
 
       const rowNumber =
         Number(
-          req.query?.row_number
+
+          req.query?.row_number ??
+
+          req.query?.rowNumber ??
+
+          req.query?.row ??
+
+          0
+
         );
 
 
@@ -260,12 +257,14 @@ export default async function handler(
 
 
       if (
-        rowNumber
+        rowNumber > 0
       ) {
 
         query =
           `${TABLE}?select=id,row_number,customer_name,status,note,photo,updated_at` +
+
           `&row_number=eq.${encodeURIComponent(rowNumber)}` +
+
           `&order=updated_at.desc`;
 
       }
@@ -296,13 +295,12 @@ export default async function handler(
     }
 
 
-    /* =========================
-       POST SAJA
-    ========================= */
+    /* =====================================
+       POST
+    ===================================== */
 
     if (
-      req.method !==
-      'POST'
+      req.method !== 'POST'
     ) {
 
       return res
@@ -317,9 +315,9 @@ export default async function handler(
     }
 
 
-    /* =========================
-       BODY
-    ========================= */
+    /* =====================================
+       BACA BODY
+    ===================================== */
 
     let body =
       req.body;
@@ -347,43 +345,116 @@ export default async function handler(
     }
 
 
-    /* =========================
-       DATA
-    ========================= */
+    if (
+      !body ||
+      typeof body !==
+      'object'
+    ) {
 
-    const rowNumber =
+      body =
+        {};
+
+    }
+
+
+    /* =====================================
+       ROW NUMBER
+       
+       Terima SEMUA format:
+       row_number
+       rowNumber
+       row
+    ===================================== */
+
+    let rowNumber =
       Number(
-        body?.row_number
+
+        body?.row_number ??
+
+        body?.rowNumber ??
+
+        body?.row ??
+
+        body?.order?.row_number ??
+
+        body?.order?.rowNumber ??
+
+        body?.order?.row ??
+
+        0
+
       );
 
 
-    const customerName =
+    /* =====================================
+       CUSTOMER NAME
+    ===================================== */
+
+    let customerName =
       String(
-        body?.customer_name ||
+
+        body?.customer_name ??
+
+        body?.customerName ??
+
+        body?.name ??
+
+        body?.order?.customer_name ??
+
+        body?.order?.customerName ??
+
+        body?.order?.name ??
+
         ''
+
       ).trim();
 
+
+    /* =====================================
+       STATUS
+    ===================================== */
 
     const status =
       String(
-        body?.status ||
+
+        body?.status ??
+
         'Belum di CO'
+
       ).trim();
 
 
+    /* =====================================
+       NOTE
+    ===================================== */
+
     const note =
       String(
-        body?.note ||
+
+        body?.note ??
+
         ''
+
       );
 
+
+    /* =====================================
+       PHOTO
+    ===================================== */
 
     const photo =
       String(
-        body?.photo ||
+
+        body?.photo ??
+
         ''
+
       );
 
+
+    /* =====================================
+       VALID STATUS
+    ===================================== */
 
     const allowedStatuses = [
 
@@ -398,12 +469,13 @@ export default async function handler(
     ];
 
 
-    /* =========================
-       VALIDATION
-    ========================= */
+    /* =====================================
+       VALIDASI ROW
+    ===================================== */
 
     if (
-      !rowNumber
+      !rowNumber ||
+      rowNumber < 1
     ) {
 
       return res
@@ -411,12 +483,30 @@ export default async function handler(
         .json({
 
           error:
-            'Row customer tidak ditemukan.'
+            'Row customer tidak ditemukan.',
+
+          received:
+            {
+
+              row_number:
+                body?.row_number ?? null,
+
+              rowNumber:
+                body?.rowNumber ?? null,
+
+              row:
+                body?.row ?? null
+
+            }
 
         });
 
     }
 
+
+    /* =====================================
+       VALIDASI NAMA
+    ===================================== */
 
     if (
       !customerName
@@ -427,12 +517,16 @@ export default async function handler(
         .json({
 
           error:
-            'Nama customer wajib diisi.'
+            'Nama customer tidak ditemukan.'
 
         });
 
     }
 
+
+    /* =====================================
+       VALIDASI STATUS
+    ===================================== */
 
     if (
       !allowedStatuses.includes(
@@ -452,20 +546,24 @@ export default async function handler(
     }
 
 
-    /* =========================
+    /* =====================================
        CEK DATA EXISTING
-    ========================= */
+    ===================================== */
 
     const existing =
       await supabase(
 
         `${TABLE}?select=id,row_number,customer_name,status,note,photo,updated_at` +
+
         `&row_number=eq.${encodeURIComponent(rowNumber)}` +
+
         `&limit=1`,
 
         {
+
           method:
             'GET'
+
         }
 
       );
@@ -476,7 +574,7 @@ export default async function handler(
         .toISOString();
 
 
-    const updateData = {
+    const rowData = {
 
       row_number:
         rowNumber,
@@ -499,9 +597,10 @@ export default async function handler(
     };
 
 
-    /* =========================
-       UPDATE
-    ========================= */
+    /* =====================================
+       KALAU SUDAH ADA
+       → UPDATE
+    ===================================== */
 
     if (
       Array.isArray(existing) &&
@@ -531,7 +630,7 @@ export default async function handler(
 
             body:
               JSON.stringify(
-                updateData
+                rowData
               )
 
           }
@@ -549,21 +648,27 @@ export default async function handler(
           action:
             'updated',
 
+          rowNumber:
+            rowNumber,
+
           update:
             Array.isArray(updated)
+
               ? updated[0] ||
-                updateData
+                rowData
+
               : updated ||
-                updateData
+                rowData
 
         });
 
     }
 
 
-    /* =========================
-       INSERT BARU
-    ========================= */
+    /* =====================================
+       KALAU BELUM ADA
+       → INSERT
+    ===================================== */
 
     const newRow = {
 
@@ -631,10 +736,15 @@ export default async function handler(
         action:
           'created',
 
+        rowNumber:
+          rowNumber,
+
         update:
           Array.isArray(inserted)
+
             ? inserted[0] ||
               newRow
+
             : inserted ||
               newRow
 
