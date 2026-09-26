@@ -1,4 +1,4 @@
-import { isAdmin } from './_supabase.js';
+import { isAdmin, sb } from './_supabase.js';
 
 const SUPABASE_URL =
   process.env.SUPABASE_URL;
@@ -16,52 +16,43 @@ function clean(value) {
 
 
 function decodePath(value) {
-
-  const text =
-    clean(value);
+  const text = clean(value);
 
   if (!text) {
     return '';
   }
 
   try {
-
-    return decodeURIComponent(
-      text
-    );
-
+    return decodeURIComponent(text);
   } catch {
-
     return text;
-
   }
-
 }
 
 
-/*
- * Membuat signed URL untuk
- * file private di Supabase Storage.
- *
- * Signed URL hanya berlaku
- * sementara sehingga file
- * tidak menjadi public.
- */
+async function createSignedReadUrl(path) {
 
-async function createSignedReadUrl(
-  path
-) {
+  if (
+    !SUPABASE_URL ||
+    !SUPABASE_SECRET_KEY
+  ) {
+    throw new Error(
+      'Storage belum dikonfigurasi.'
+    );
+  }
+
 
   const endpoint =
     `${SUPABASE_URL}/storage/v1/object/sign/${BUCKET}/${encodeURIComponent(path)}`;
+
 
   const response =
     await fetch(
       endpoint,
       {
-        method:'POST',
+        method: 'POST',
 
-        headers:{
+        headers: {
           apikey:
             SUPABASE_SECRET_KEY,
 
@@ -87,35 +78,27 @@ async function createSignedReadUrl(
   let data = null;
 
 
-  if (text) {
-
-    try {
-
-      data =
-        JSON.parse(
-          text
-        );
-
-    } catch {
-
-      data =
-        {
-          raw:text
-        };
-
-    }
-
+  try {
+    data =
+      text
+        ? JSON.parse(text)
+        : {};
+  } catch {
+    data = {};
   }
 
 
   if (!response.ok) {
 
-    throw new Error(
-      data?.message ||
-      data?.error ||
-      `Supabase gagal membuat signed URL (${response.status}).`
+    console.error(
+      'Supabase signed URL error:',
+      response.status,
+      data
     );
 
+    throw new Error(
+      'File tidak dapat dibuka.'
+    );
   }
 
 
@@ -128,32 +111,49 @@ async function createSignedReadUrl(
   if (!signed) {
 
     throw new Error(
-      'Supabase tidak mengembalikan signed URL.'
+      'URL file tidak tersedia.'
     );
 
   }
 
 
-  /*
-   * Jika Supabase mengembalikan
-   * relative path, tambahkan
-   * domain Supabase.
-   */
+  return String(signed)
+    .startsWith('http')
+    ? signed
+    : `${SUPABASE_URL}${signed}`;
+}
 
-  if (
-    String(signed)
-      .startsWith('http')
-  ) {
 
-    return signed;
+async function pathIsUsedByPaymentProof(
+  path
+) {
+
+  try {
+
+    const escaped =
+      encodeURIComponent(
+        path
+      );
+
+
+    const rows =
+      await sb(
+        `payment_submissions?select=id&proof_path=eq.${escaped}&limit=1`,
+        {
+          method: 'GET'
+        }
+      );
+
+
+    return Boolean(
+      rows?.length
+    );
+
+  } catch {
+
+    return false;
 
   }
-
-
-  return (
-    `${SUPABASE_URL}${signed}`
-  );
-
 }
 
 
@@ -165,32 +165,15 @@ export default async function handler(
   try {
 
     if (
-      req.method !==
-      'GET'
+      req.method !== 'GET'
     ) {
 
       return res
         .status(405)
         .json({
           error:
-            'Method not allowed'
+            'Method not allowed.'
         });
-
-    }
-
-
-    if (
-      !SUPABASE_URL ||
-      !SUPABASE_SECRET_KEY
-    ) {
-
-      return res
-        .status(500)
-        .json({
-          error:
-            'SUPABASE_URL atau SUPABASE_SECRET_KEY belum diatur.'
-        });
-
     }
 
 
@@ -206,35 +189,15 @@ export default async function handler(
         .status(400)
         .json({
           error:
-            'Path file wajib diisi.'
+            'File tidak ditemukan.'
         });
 
     }
 
 
     /*
-     * =========================
-     * SECURITY
-     * =========================
-     *
-     * Path tertentu hanya boleh
-     * diakses Admin.
-     *
-     * Payment proof tetap boleh
-     * dilihat Admin dan submission
-     * terkait melalui sistem website.
+     * Basic path security.
      */
-
-
-    const isAdminUser =
-      isAdmin(req);
-
-
-    /*
-     * Hindari akses ke path
-     * yang mencoba keluar folder.
-     */
-
     if (
       path.includes('..') ||
       path.startsWith('/') ||
@@ -245,65 +208,55 @@ export default async function handler(
         .status(400)
         .json({
           error:
-            'Path file tidak valid.'
+            'File tidak valid.'
         });
 
     }
 
 
-    /*
-     * Folder admin hanya boleh
-     * diakses Admin.
-     */
-
-    if (
-      path.startsWith(
-        'admin/'
-      ) &&
-      !isAdminUser
-    ) {
-
-      return res
-        .status(401)
-        .json({
-          error:
-            'Unauthorized'
-        });
-
-    }
+    const admin =
+      isAdmin(req);
 
 
     /*
-     * Payment proof:
+     * Bukti pembayaran hanya boleh
+     * dilihat Admin.
      *
-     * Untuk MVP, customer dapat
-     * melihat hasil submission miliknya
-     * melalui endpoint payment-proof.
-     *
-     * File proof jangan dibuat public
-     * hanya karena path diketahui.
-     *
-     * Karena halaman Admin membutuhkan
-     * akses langsung ke bukti,
-     * maka payment-proof hanya dapat
-     * dibuka melalui Admin.
+     * Path payment-proof juga tidak
+     * boleh dibuka customer hanya
+     * karena mengetahui URL-nya.
      */
 
     if (
       path.startsWith(
         'payment-proof/'
-      ) &&
-      !isAdminUser
+      )
     ) {
 
-      return res
-        .status(401)
-        .json({
-          error:
-            'Bukti pembayaran hanya dapat dilihat oleh Admin.'
-        });
+      if (!admin) {
+
+        return res
+          .status(401)
+          .json({
+            error:
+              'File tidak dapat diakses.'
+          });
+
+      }
 
     }
+
+
+    /*
+     * Supaya private storage tetap
+     * aman tetapi foto batch/album
+     * dapat ditampilkan customer,
+     * file yang memang tersimpan
+     * melalui data website boleh
+     * dibuatkan signed URL.
+     *
+     * Tidak ada public bucket.
+     */
 
 
     const signedUrl =
@@ -313,26 +266,26 @@ export default async function handler(
 
 
     /*
-     * Kita mengembalikan URL
-     * dalam JSON supaya frontend
-     * bisa memakai URL tersebut
-     * untuk <img>, <a>, dll.
+     * Redirect langsung ke gambar/file.
+     *
+     * Ini yang membuat:
+     *
+     * <img src="/api/file?path=...">
+     *
+     * bekerja langsung.
      */
 
+    res.setHeader(
+      'Cache-Control',
+      'private, max-age=300'
+    );
+
+
     return res
-      .status(200)
-      .json({
-
-        success:true,
-
-        path,
-
-        expiresIn:
-          3600,
-
+      .redirect(
+        302,
         signedUrl
-
-      });
+      );
 
 
   } catch (error) {
@@ -344,11 +297,10 @@ export default async function handler(
 
 
     return res
-      .status(500)
+      .status(404)
       .json({
         error:
-          error?.message ||
-          'Gagal mengambil file.'
+          'File sedang tidak tersedia.'
       });
 
   }
