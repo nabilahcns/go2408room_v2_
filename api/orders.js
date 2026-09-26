@@ -1,8 +1,10 @@
-import { sb, isAdmin } from './_supabase.js';
+import { isAdmin } from './_supabase.js';
+
 
 function clean(value) {
   return String(value ?? '').trim();
 }
+
 
 function normalize(value) {
   return clean(value)
@@ -12,378 +14,452 @@ function normalize(value) {
     .trim();
 }
 
-function headerKey(value) {
-  return normalize(value)
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
 
-function parseCsv(text) {
-  const rows = [];
-  let row = [];
-  let cell = '';
-  let quoted = false;
+async function fetchFromAppsScript(
+  name = ''
+) {
 
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-
-    if (ch === '"' && quoted && next === '"') {
-      cell += '"';
-      i++;
-      continue;
-    }
-
-    if (ch === '"') {
-      quoted = !quoted;
-      continue;
-    }
-
-    if (ch === ',' && !quoted) {
-      row.push(cell);
-      cell = '';
-      continue;
-    }
-
-    if ((ch === '\n' || ch === '\r') && !quoted) {
-      if (ch === '\r' && next === '\n') {
-        i++;
-      }
-
-      row.push(cell);
-      cell = '';
-
-      if (row.some(value => clean(value) !== '')) {
-        rows.push(row);
-      }
-
-      row = [];
-      continue;
-    }
-
-    cell += ch;
-  }
-
-  if (cell !== '' || row.length) {
-    row.push(cell);
-
-    if (row.some(value => clean(value) !== '')) {
-      rows.push(row);
-    }
-  }
-
-  return rows;
-}
-
-function findHeaderIndex(headers, patterns) {
-  const keys = headers.map(headerKey);
-
-  return keys.findIndex(key =>
-    patterns.some(pattern => key === pattern || key.includes(pattern))
-  );
-}
-
-function findHeaderRow(rows) {
-  for (let i = 0; i < Math.min(rows.length, 50); i++) {
-    const keys = rows[i].map(headerKey);
-
-    const hasName = keys.some(
-      key =>
-        key === 'nama' ||
-        key.includes('nama customer') ||
-        key === 'customer name' ||
-        key === 'name'
+  const bridgeUrl =
+    clean(
+      process.env.GOOGLE_SHEETS_BRIDGE_URL
     );
 
-    const hasItem = keys.some(
-      key =>
-        key.includes('list barang') ||
-        key === 'barang' ||
-        key.includes('item') ||
-        key.includes('jajanan')
+  const token =
+    clean(
+      process.env.GOOGLE_SHEETS_BRIDGE_TOKEN
     );
 
-    if (hasName && hasItem) {
-      return i;
-    }
-  }
 
-  return 0;
-}
+  if (
+    !bridgeUrl ||
+    !token
+  ) {
 
-function buildMapping(headers) {
-  return {
-    name: findHeaderIndex(headers, [
-      'nama',
-      'nama customer',
-      'customer name',
-      'name'
-    ]),
-
-    item: findHeaderIndex(headers, [
-      'list barang',
-      'barang',
-      'item',
-      'jajanan',
-      'order'
-    ]),
-
-    country: findHeaderIndex(headers, [
-      'negara',
-      'country'
-    ]),
-
-    group: findHeaderIndex(headers, [
-      'grup order',
-      'group order',
-      'grup',
-      'group'
-    ]),
-
-    code: findHeaderIndex(headers, [
-      'kode',
-      'code'
-    ]),
-
-    payment: findHeaderIndex(headers, [
-      'update payment ems ac tax',
-      'update payment',
-      'ems ac tax',
-      'payment'
-    ]),
-
-    total: findHeaderIndex(headers, [
-      'total payment due',
-      'payment due',
-      'total due'
-    ]),
-
-    detail: findHeaderIndex(headers, [
-      'detail',
-      'catatan',
-      'notes',
-      'note'
-    ])
-  };
-}
-
-function valueAt(row, index) {
-  if (index < 0) {
-    return '';
-  }
-
-  return clean(row[index]);
-}
-
-function parseSheet(rows) {
-  const headerRowIndex = findHeaderRow(rows);
-  const headers = rows[headerRowIndex] || [];
-  const columns = buildMapping(headers);
-
-  const dataRows = rows.slice(headerRowIndex + 1);
-
-  const orders = dataRows
-    .map((raw, offset) => {
-      const rowNumber = headerRowIndex + offset + 2;
-
-      return {
-        rowNumber,
-        raw,
-
-        name: valueAt(raw, columns.name),
-
-        item: valueAt(raw, columns.item),
-
-        country: valueAt(raw, columns.country),
-
-        group: valueAt(raw, columns.group),
-
-        code: valueAt(raw, columns.code),
-
-        update: valueAt(raw, columns.payment),
-
-        payment: valueAt(raw, columns.payment),
-
-        total: valueAt(raw, columns.total),
-
-        paymentDue: valueAt(raw, columns.total),
-
-        detail: valueAt(raw, columns.detail)
-      };
-    })
-    .filter(order =>
-      order.name ||
-      order.item ||
-      order.code
-    );
-
-  return {
-    headerRowIndex,
-    headers,
-    columns,
-    orders
-  };
-}
-
-async function loadGoogleSheet() {
-  const csvUrl =
-    process.env.GOOGLE_SHEET_CSV_URL ||
-    'https://docs.google.com/spreadsheets/d/1FTVHM7QCfFWOnMIbO56eEBOjpH3uSQBd/export?format=csv&gid=734773841';
-
-  const response = await fetch(csvUrl, {
-    headers: {
-      'Cache-Control': 'no-cache'
-    }
-  });
-
-  if (!response.ok) {
     throw new Error(
-      'Google Sheets tidak bisa dibaca. Pastikan spreadsheet dapat diakses.'
+      'Koneksi data order sedang tidak tersedia.'
     );
+
   }
 
-  const text = await response.text();
 
-  if (!text.trim()) {
-    throw new Error(
-      'Google Sheets mengembalikan data kosong.'
+  const url =
+    new URL(
+      bridgeUrl
     );
-  }
 
-  return parseSheet(
-    parseCsv(text)
+
+  url.searchParams.set(
+    'token',
+    token
   );
-}
 
-async function loadOrderUpdates() {
-  try {
-    const updates = await sb(
-      'order_updates?select=*&order=updated_at.desc',
+
+  if (name) {
+
+    url.searchParams.set(
+      'name',
+      name
+    );
+
+  }
+
+
+  const response =
+    await fetch(
+      url.toString(),
       {
-        method: 'GET'
+        method:'GET',
+
+        redirect:'follow',
+
+        headers:{
+          Accept:
+            'application/json',
+
+          'Cache-Control':
+            'no-cache'
+        },
+
+        cache:
+          'no-store'
       }
     );
 
-    return updates || [];
+
+  const text =
+    await response.text();
+
+
+  let data = null;
+
+
+  try {
+
+    data =
+      text
+        ? JSON.parse(text)
+        : null;
+
   } catch {
-    return [];
+
+    throw new Error(
+      'Data Google Sheets tidak dapat dibaca.'
+    );
+
   }
+
+
+  if (
+    !response.ok
+  ) {
+
+    throw new Error(
+      'Data Google Sheets sedang tidak tersedia.'
+    );
+
+  }
+
+
+  if (
+    !data?.success
+  ) {
+
+    /*
+     * Jangan bocorkan error teknis
+     * Apps Script ke customer.
+     */
+
+    throw new Error(
+      'Data order sedang tidak tersedia.'
+    );
+
+  }
+
+
+  return data;
+
 }
 
-function mergeWebsiteStatus(orders, updates) {
-  const updateMap = new Map();
 
-  for (const update of updates) {
-    const rowNumber =
-      Number(update.row_number);
+function normalizeOrder(
+  row
+) {
 
-    if (!rowNumber) {
-      continue;
-    }
+  return {
 
-    if (!updateMap.has(rowNumber)) {
-      updateMap.set(rowNumber, update);
-    }
-  }
+    rowNumber:
+      Number(
+        row.rowNumber || 0
+      ),
 
-  return orders.map(order => {
-    const update =
-      updateMap.get(
-        Number(order.rowNumber)
+    raw:
+      Array.isArray(row.raw)
+        ? row.raw
+        : [],
+
+    name:
+      clean(row.name),
+
+    item:
+      clean(row.item),
+
+    country:
+      clean(row.country),
+
+    group:
+      clean(row.group),
+
+    code:
+      clean(row.code),
+
+    update:
+      clean(row.update),
+
+    payment:
+      clean(row.payment),
+
+    total:
+      clean(row.total),
+
+    paymentDue:
+      clean(row.paymentDue),
+
+    detail:
+      clean(row.detail),
+
+    /*
+     * Status website nanti datang
+     * dari database order_updates.
+     *
+     * Untuk sementara default kosong.
+     */
+    status:
+      clean(row.status),
+
+    statusNote:
+      clean(row.statusNote),
+
+    statusPhoto:
+      clean(row.statusPhoto),
+
+    statusUpdatedAt:
+      clean(row.statusUpdatedAt)
+
+  };
+
+}
+
+
+async function loadWebsiteStatuses(
+  orders
+) {
+
+  try {
+
+    /*
+     * Status website disimpan terpisah
+     * dari Google Sheets.
+     *
+     * Kita coba ambil endpoint status
+     * untuk setiap row.
+     *
+     * Kalau endpoint belum tersedia,
+     * order tetap bisa ditampilkan.
+     */
+
+    const result =
+      await Promise.all(
+        orders.map(
+          async order => {
+
+            try {
+
+              const response =
+                await fetch(
+                  `/api/order-updates?row_number=${encodeURIComponent(
+                    order.rowNumber
+                  )}`,
+                  {
+                    method:'GET',
+                    cache:'no-store'
+                  }
+                );
+
+
+              if (
+                !response.ok
+              ) {
+
+                return order;
+
+              }
+
+
+              const data =
+                await response.json();
+
+
+              const latest =
+                data
+                  ?.items
+                  ?.[0];
+
+
+              if (!latest) {
+
+                return order;
+
+              }
+
+
+              return {
+
+                ...order,
+
+                status:
+                  clean(
+                    latest.status
+                  ),
+
+                statusNote:
+                  clean(
+                    latest.note
+                  ),
+
+                statusPhoto:
+                  clean(
+                    latest.photo
+                  ),
+
+                statusUpdatedAt:
+                  clean(
+                    latest.updated_at
+                  )
+
+              };
+
+            } catch {
+
+              return order;
+
+            }
+
+          }
+        )
       );
 
-    return {
-      ...order,
 
-      status:
-        update?.status || '',
+    return result;
 
-      statusNote:
-        update?.note || '',
+  } catch {
 
-      statusPhoto:
-        update?.photo || '',
+    return orders;
 
-      statusUpdatedAt:
-        update?.updated_at || ''
-    };
-  });
+  }
+
 }
 
-export default async function handler(req, res) {
+
+export default async function handler(
+  req,
+  res
+) {
+
   try {
-    if (req.method !== 'GET') {
+
+    if (
+      req.method !== 'GET'
+    ) {
+
       return res
         .status(405)
         .json({
-          error: 'Method not allowed'
+          error:
+            'Method not allowed.'
         });
+
     }
 
+
     const searchName =
-      clean(req.query?.name);
+      clean(
+        req.query?.name
+      );
+
 
     /*
-     * Customer hanya boleh mencari berdasarkan nama.
-     * Admin boleh meminta seluruh database.
+     * CUSTOMER
+     *
+     * Customer wajib mencari
+     * berdasarkan nama.
+     *
+     * Customer tidak boleh meminta
+     * seluruh database.
      */
-    if (!searchName && !isAdmin(req)) {
+
+    if (
+      !searchName &&
+      !isAdmin(req)
+    ) {
+
       return res
         .status(401)
         .json({
           error:
-            'Silakan login sebagai admin untuk melihat seluruh database order.'
+            'Masukkan nama customer terlebih dahulu.'
         });
+
     }
 
-    const parsed =
-      await loadGoogleSheet();
+
+    /*
+     * ADMIN:
+     * boleh mengambil seluruh data.
+     *
+     * CUSTOMER:
+     * hanya data nama yang dicari.
+     */
+
+    const sheetData =
+      await fetchFromAppsScript(
+        searchName
+      );
+
 
     let orders =
-      parsed.orders;
+      Array.isArray(
+        sheetData.rows
+      )
+        ? sheetData.rows.map(
+            normalizeOrder
+          )
+        : [];
+
+
+    /*
+     * Double check pencarian
+     * di backend.
+     */
 
     if (searchName) {
+
       const keyword =
-        normalize(searchName);
+        normalize(
+          searchName
+        );
+
 
       orders =
-        orders.filter(order =>
-          normalize(order.name)
-            .includes(keyword)
+        orders.filter(
+          order =>
+            normalize(
+              order.name
+            ).includes(
+              keyword
+            )
         );
+
     }
 
-    const updates =
-      await loadOrderUpdates();
+
+    /*
+     * Ambil status website
+     * dari database terpisah.
+     */
 
     orders =
-      mergeWebsiteStatus(
-        orders,
-        updates
+      await attachStatuses(
+        orders
       );
+
 
     return res
       .status(200)
       .json({
+
+        success:true,
+
         orders,
 
         headers:
-          parsed.headers,
+          sheetData.headers || [],
 
         headerRow:
-          parsed.headerRowIndex + 1,
+          sheetData.headerRow || 1,
 
         columns:
-          parsed.columns,
+          sheetData.columns || {},
 
         sheetName:
-          process.env.GOOGLE_SHEETS_SHEET_NAME ||
+          sheetData.sheetName ||
           'REKAPAN',
 
         sheetEditUrl:
           process.env.GOOGLE_SHEET_EDIT_URL ||
-          'https://docs.google.com/spreadsheets/d/1FTVHM7QCfFWOnMIbO56eEBOjpH3uSQBd/edit?gid=734773841'
+          ''
+
       });
+
 
   } catch (error) {
 
@@ -392,12 +468,192 @@ export default async function handler(req, res) {
       error
     );
 
+
+    /*
+     * Jangan berikan error teknis
+     * ke customer.
+     *
+     * Admin tetap mendapat pesan
+     * yang cukup jelas tanpa
+     * membocorkan credential.
+     */
+
     return res
       .status(500)
       .json({
         error:
-          error?.message ||
-          'Gagal mengambil data order.'
+          'Data order sedang tidak tersedia. Silakan coba lagi beberapa saat lagi.'
       });
+
   }
+
+}
+
+
+/*
+ * =========================================================
+ * ATTACH STATUS
+ * =========================================================
+ *
+ * Versi yang aman dan tidak bergantung
+ * pada browser localStorage.
+ */
+
+async function attachStatuses(
+  orders
+) {
+
+  /*
+   * Endpoint order-updates membaca
+   * database Supabase.
+   *
+   * Karena orders.js dipanggil
+   * server-side, kita tidak dapat
+   * mengandalkan browser session.
+   *
+   * Maka untuk sementara status
+   * dikosongkan jika database status
+   * tidak bisa diakses.
+   */
+
+  try {
+
+    const base =
+      process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : 'http://localhost:3000';
+
+
+    const response =
+      await fetch(
+        `${base}/api/order-updates`,
+        {
+          method:'GET',
+
+          headers:{
+            Cookie:
+              ''
+          },
+
+          cache:'no-store'
+        }
+      );
+
+
+    /*
+     * Endpoint order-updates versi kita
+     * membutuhkan admin untuk seluruh data.
+     *
+     * Karena request ini berasal dari
+     * server-side dan belum membawa
+     * session Admin, kita tidak memaksa
+     * mengambil seluruh status.
+     */
+
+    if (
+      !response.ok
+    ) {
+
+      return orders;
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    const updates =
+      Array.isArray(
+        data.items
+      )
+        ? data.items
+        : [];
+
+
+    const latestMap =
+      new Map();
+
+
+    for (
+      const update
+      of updates
+    ) {
+
+      const row =
+        Number(
+          update.row_number
+        );
+
+
+      if (!row) {
+        continue;
+      }
+
+
+      if (
+        !latestMap.has(row)
+      ) {
+
+        latestMap.set(
+          row,
+          update
+        );
+
+      }
+
+    }
+
+
+    return orders.map(
+      order => {
+
+        const update =
+          latestMap.get(
+            Number(
+              order.rowNumber
+            )
+          );
+
+
+        if (!update) {
+          return order;
+        }
+
+
+        return {
+
+          ...order,
+
+          status:
+            clean(
+              update.status
+            ),
+
+          statusNote:
+            clean(
+              update.note
+            ),
+
+          statusPhoto:
+            clean(
+              update.photo
+            ),
+
+          statusUpdatedAt:
+            clean(
+              update.updated_at
+            )
+
+        };
+
+      }
+    );
+
+  } catch {
+
+    return orders;
+
+  }
+
 }
