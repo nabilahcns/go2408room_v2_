@@ -1,598 +1,198 @@
-import { isAdmin } from './_supabase.js';
-
+import { isAdmin, sb } from './_supabase.js';
 
 const BRIDGE_URL =
-  process.env.GOOGLE_SHEETS_BRIDGE_URL;
+  process.env.GOOGLE_SHEETS_BRIDGE_URL || '';
 
 const BRIDGE_TOKEN =
-  process.env.GOOGLE_SHEETS_BRIDGE_TOKEN;
+  process.env.GOOGLE_SHEETS_BRIDGE_TOKEN || '';
+
+const SHEET_EDIT_URL =
+  process.env.GOOGLE_SHEET_EDIT_URL || '';
 
 
-/* =========================
-   HELPERS
-========================= */
-
-function text(value){
-
-  return String(
-    value ?? ''
-  ).trim();
-
+function clean(value) {
+  return String(value ?? '').trim();
 }
 
 
-function normalize(value){
-
-  return text(value)
+function normalize(value) {
+  return clean(value)
     .toLowerCase()
     .replace(/\s+/g, ' ');
-
 }
 
 
-function headerKey(value){
-
-  return normalize(value)
-    .replace(
-      /[^a-z0-9]/g,
-      ''
-    );
-
-}
-
-
-function valueFromColumn(
-  row,
-  key
-){
-
-  const columns =
-    row.columns || {};
-
-  const raw =
-    Array.isArray(row.raw)
-      ? row.raw
-      : [];
-
-
-  const index =
-    columns[key];
-
-
-  if(
-    index === undefined ||
-    index === null
-  ){
-
-    return '';
-
-  }
-
-
-  return text(
-    raw[index]
-  );
-
-}
-
-
-function findHeaderValue(
-  row,
-  names
-){
-
-  const headers =
-    Array.isArray(row.headers)
-      ? row.headers
-      : [];
-
-
-  const raw =
-    Array.isArray(row.raw)
-      ? row.raw
-      : [];
-
-
-  const wanted =
-    names.map(
-      headerKey
-    );
-
-
-  for(
-    let i = 0;
-    i < headers.length;
-    i++
-  ){
-
-    const key =
-      headerKey(
-        headers[i]
-      );
-
-
-    if(
-      wanted.includes(key)
-    ){
-
-      return text(
-        raw[i]
-      );
-
-    }
-
-  }
-
-
-  return '';
-
-}
-
-
-/* =========================
-   DETEKSI NEGARA
-========================= */
-
-function deriveCountry(row){
-
-  /*
-    Kalau data dari Google Sheets
-    sudah memiliki country,
-    gunakan data tersebut.
-  */
-
-  const existing =
-    text(
-      row.country
-    );
-
-
-  if(existing){
-
-    return existing;
-
-  }
-
+function deriveCountry(order) {
 
   const sheet =
-    normalize(
-      row.sheetName
-    );
-
-
-  /*
-    Bersihkan kode order.
-
-    Contoh:
-
-    HCChina268
-    HC-China-268
-    HC China 268
-
-    semuanya akan dibaca.
-  */
+    normalize(order.sheetName);
 
   const code =
-    text(
-      row.code
-    )
-    .toUpperCase()
-    .replace(
-      /[^A-Z0-9]/g,
-      ''
-    );
+    clean(order.code).toUpperCase();
 
 
-  /*
-    =========================
-    BERDASARKAN NAMA SHEET
-    =========================
-  */
-
-
-  if(
-    sheet.includes('korea')
-  ){
-
-    return 'KOREA';
-
-  }
-
-
-  if(
-    sheet.includes('china')
-  ){
-
-    return 'CHINA';
-
-  }
-
-
-  if(
-    sheet.includes('jepang') ||
-    sheet.includes('japan')
-  ){
-
-    return 'JEPANG';
-
-  }
-
-
-  if(
-    sheet.includes('thailand')
-  ){
-
-    return 'THAILAND';
-
-  }
-
-
-  if(
-    sheet.includes('philiphina') ||
-    sheet.includes('philippines')
-  ){
-
-    return 'PHILIPPINES';
-
-  }
-
-
-  /*
-    =========================
-    BERDASARKAN KODE
-    =========================
-  */
-
-
-  /*
-    HANDCARRY CHINA
-
-    Contoh:
-
-    HCChina268
-    HCChina274
-    HCChina296
-  */
-
-  if(
-    code.startsWith('HCCHINA')
-  ){
-
-    return 'CHINA';
-
-  }
-
-
-  /*
-    HANDCARRY KOREA
-  */
-
-  if(
-    code.startsWith('HCKOREA')
-  ){
-
-    return 'KOREA';
-
-  }
-
-
-  /*
-    HANDCARRY JAPAN
-  */
-
-  if(
-    code.startsWith('HCJAPAN')
-  ){
-
-    return 'JEPANG';
-
-  }
-
-
-  /*
-    HANDCARRY THAILAND
-  */
-
-  if(
-    code.startsWith('HCTHAILAND')
-  ){
-
-    return 'THAILAND';
-
-  }
-
-
-  /*
-    HANDCARRY PHILIPPINES
-  */
-
-  if(
-    code.startsWith('HCPHILIPPINES')
-  ){
-
-    return 'PHILIPPINES';
-
-  }
-
-
-  /*
-    KODE CHINA
-  */
-
-  if(
+  if (
+    sheet.includes('china') ||
     code.startsWith('CH')
-  ){
-
+  ) {
     return 'CHINA';
-
   }
 
 
-  /*
-    KODE KOREA
-  */
-
-  if(
-    code.startsWith('KR')
-  ){
-
+  if (
+    sheet.includes('korea') ||
+    code.startsWith('KR') ||
+    code.startsWith('RI')
+  ) {
     return 'KOREA';
-
   }
 
 
-  /*
-    KODE JEPANG
-  */
-
-  if(
+  if (
+    sheet.includes('jepang') ||
+    sheet.includes('japan') ||
     code.startsWith('JP')
-  ){
-
+  ) {
     return 'JEPANG';
-
   }
 
 
-  /*
-    KODE THAILAND
-  */
-
-  if(
+  if (
+    sheet.includes('thailand') ||
     code.startsWith('TH')
-  ){
-
+  ) {
     return 'THAILAND';
-
   }
 
 
-  /*
-    KODE PHILIPPINES
-  */
-
-  if(
+  if (
+    sheet.includes('philip') ||
+    sheet.includes('philiph') ||
     code.startsWith('PH')
-  ){
-
+  ) {
     return 'PHILIPPINES';
-
   }
 
-
-  /*
-    Negara tidak diketahui
-  */
 
   return 'LAINNYA';
 
 }
 
 
-/* =========================
-   NORMALIZE ORDER
-========================= */
+function normalizeOrder(order) {
 
-function normalizeOrder(row){
-
-  /*
-    Ambil PAYMENT
-  */
-
-  const payment =
-    text(
-      row.payment ||
-      valueFromColumn(
-        row,
-        'payment'
-      )
-    );
-
-
-  /*
-    Ambil TOTAL
-  */
-
-  const explicitTotal =
-    text(
-      row.total ||
-      valueFromColumn(
-        row,
-        'total'
-      )
-    );
-
-
-  /*
-    Beberapa sheet menggunakan
-    HARGA / PRICE.
-  */
-
-  const harga =
-    findHeaderValue(
-      row,
-      [
-        'HARGA',
-        'PRICE'
-      ]
-    );
-
-
-  /*
-    Urutan nilai total:
-
-    TOTAL
-    ↓
-    PAYMENT
-    ↓
-    HARGA
-  */
-
-  const total =
-    explicitTotal ||
-    payment ||
-    harga;
+  const columns =
+    order?.columns ||
+    {};
 
 
   return {
 
-    name:
-      text(
-        row.name ||
-        valueFromColumn(
-          row,
-          'name'
-        )
-      ),
+    /*
+     * IDENTITAS GOOGLE SHEETS
+     * Ini yang paling penting untuk
+     * proses Edit / Update.
+     */
 
+    sheetName:
+      clean(order?.sheetName),
 
-    item:
-      text(
-        row.item ||
-        valueFromColumn(
-          row,
-          'item'
-        )
-      ),
+    rowNumber:
+      Number(order?.rowNumber) || 0,
 
+    headerRow:
+      Number(order?.headerRow) || 1,
 
-    country:
-      deriveCountry(
-        row
-      ),
-
-
-    group:
-      text(
-        row.group ||
-        valueFromColumn(
-          row,
-          'group'
-        )
-      ),
-
-
-    code:
-      text(
-        row.code ||
-        valueFromColumn(
-          row,
-          'code'
-        )
-      ),
-
-
-    update:
-      text(
-        row.update ||
-        valueFromColumn(
-          row,
-          'update'
-        )
-      ),
-
-
-    payment,
-
-
-    total,
-
-
-    paymentDue:
-      text(
-        row.paymentDue ||
-        valueFromColumn(
-          row,
-          'paymentDue'
-        )
-      ),
-
-
-    detail:
-      text(
-        row.detail ||
-        valueFromColumn(
-          row,
-          'detail'
-        )
-      ),
+    headers:
+      Array.isArray(order?.headers)
+        ? order.headers
+        : [],
 
 
     /*
-      ID unik setiap order.
+     * MAPPING KOLOM
+     */
 
-      Contoh:
+    columns:columns,
 
-      JAJAN CHINA:1264
 
-      HANDCARRY:188
-    */
+    /*
+     * RAW ROW
+     * Dipakai saat menulis kembali
+     * ke Google Sheets.
+     */
 
-    orderId:
-      `${text(row.sheetName)}:${Number(row.rowNumber || 0)}`
+    raw:
+      Array.isArray(order?.raw)
+        ? order.raw
+        : [],
+
+
+    /*
+     * DATA ORDER
+     */
+
+    name:
+      clean(order?.name),
+
+    item:
+      clean(order?.item),
+
+    country:
+      order?.country
+        ? clean(order.country).toUpperCase()
+        : deriveCountry(order),
+
+    group:
+      clean(order?.group),
+
+    code:
+      clean(order?.code),
+
+    update:
+      clean(order?.update),
+
+    payment:
+      clean(order?.payment),
+
+    total:
+      clean(order?.total),
+
+    paymentDue:
+      clean(order?.paymentDue),
+
+    detail:
+      clean(order?.detail)
+
 
   };
 
 }
 
 
-/* =========================
-   GOOGLE SHEETS BRIDGE
-========================= */
+async function fetchFromAppsScript(search = '') {
 
-async function fetchFromAppsScript(
-  name = ''
-){
+  if (!BRIDGE_URL) {
 
-  if(!BRIDGE_URL){
-
-    throw Error(
-      'GOOGLE_SHEETS_BRIDGE_URL belum tersedia.'
+    throw new Error(
+      'GOOGLE_SHEETS_BRIDGE_URL belum diatur di Vercel.'
     );
 
   }
 
 
-  if(!BRIDGE_TOKEN){
+  if (!BRIDGE_TOKEN) {
 
-    throw Error(
-      'GOOGLE_SHEETS_BRIDGE_TOKEN belum tersedia.'
+    throw new Error(
+      'GOOGLE_SHEETS_BRIDGE_TOKEN belum diatur di Vercel.'
     );
 
   }
 
 
   const url =
-    new URL(
-      BRIDGE_URL
-    );
+    new URL(BRIDGE_URL);
 
-
-  /*
-    Token hanya dikirim
-    dari server Vercel ke
-    Apps Script.
-  */
 
   url.searchParams.set(
     'token',
@@ -600,16 +200,11 @@ async function fetchFromAppsScript(
   );
 
 
-  /*
-    Kalau ada nama customer,
-    kirim ke Apps Script.
-  */
-
-  if(name){
+  if (search) {
 
     url.searchParams.set(
-      'name',
-      name
+      'search',
+      search
     );
 
   }
@@ -619,35 +214,52 @@ async function fetchFromAppsScript(
     await fetch(
       url.toString(),
       {
-        cache:
-          'no-store'
+        method:'GET'
       }
     );
 
 
-  const data =
-    await response
-      .json()
-      .catch(
-        () => null
-      );
+  const raw =
+    await response.text();
 
 
-  if(!response.ok){
+  let data = null;
 
-    throw Error(
-      data?.error ||
-      'Google Sheets bridge gagal.'
+
+  try {
+
+    data =
+      raw
+        ? JSON.parse(raw)
+        : null;
+
+  } catch {
+
+    throw new Error(
+      'Google Sheets bridge mengembalikan data yang tidak valid.'
     );
 
   }
 
 
-  if(!data?.success){
+  if (!response.ok) {
 
-    throw Error(
+    throw new Error(
       data?.error ||
-      'Google Sheets tidak mengembalikan data.'
+      'Google Sheets bridge gagal diakses.'
+    );
+
+  }
+
+
+  if (
+    data?.success === false ||
+    data?.ok === false
+  ) {
+
+    throw new Error(
+      data?.error ||
+      'Google Sheets bridge menolak request.'
     );
 
   }
@@ -658,192 +270,242 @@ async function fetchFromAppsScript(
 }
 
 
-/* =========================
-   API HANDLER
-========================= */
+async function getWebsiteStatuses() {
+
+  try {
+
+    const rows =
+      await sb(
+        'order_updates?select=id,row_number,customer_name,status,note,photo,updated_at&order=updated_at.desc',
+        {
+          method:'GET'
+        }
+      );
+
+
+    return Array.isArray(rows)
+      ? rows
+      : [];
+
+
+  } catch {
+
+    return [];
+
+  }
+
+}
+
+
+function attachStatuses(
+  orders,
+  updates
+) {
+
+  const statusMap =
+    new Map();
+
+
+  for (
+    const update
+    of updates
+  ) {
+
+    const row =
+      Number(
+        update?.row_number
+      );
+
+
+    if (
+      !row ||
+      !Number.isFinite(row)
+    ) {
+      continue;
+    }
+
+
+    /*
+     * Ambil update terbaru
+     * untuk row tersebut.
+     */
+
+    if (
+      !statusMap.has(row)
+    ) {
+
+      statusMap.set(
+        row,
+        update
+      );
+
+    }
+
+  }
+
+
+  return orders.map(
+    order => {
+
+      const update =
+        statusMap.get(
+          Number(order.rowNumber)
+        );
+
+
+      return {
+
+        ...order,
+
+        status:
+          update?.status ||
+          'Belum di CO',
+
+        statusNote:
+          update?.note || '',
+
+        statusPhoto:
+          update?.photo || '',
+
+        statusUpdatedAt:
+          update?.updated_at || ''
+
+      };
+
+    }
+  );
+
+}
+
 
 export default async function handler(
   req,
   res
-){
+) {
 
-  try{
+  try {
 
-    /*
-      Hanya GET
-    */
 
-    if(
+    if (
       req.method !== 'GET'
-    ){
+    ) {
 
       return res
         .status(405)
         .json({
-
-          success:false,
-
-          error:
-            'Method tidak diizinkan.'
-
+          error:'Method not allowed'
         });
 
     }
 
 
     /*
-      Cek apakah user adalah admin
-    */
+     * CUSTOMER
+     *
+     * Customer wajib mencari
+     * berdasarkan nama.
+     */
 
-    const admin =
-      isAdmin(
-        req
-      );
-
-
-    /*
-      Ambil nama dari URL
-
-      Contoh:
-
-      /api/orders?name=Monica
-    */
-
-    const name =
-      text(
+    const search =
+      clean(
         req.query?.name
       );
 
 
-    /*
-      Customer wajib menggunakan
-      pencarian nama.
+    const admin =
+      isAdmin(req);
 
-      Admin boleh mengambil
-      seluruh data.
-    */
 
-    if(
-      !name &&
-      !admin
-    ){
+    if (
+      !admin &&
+      !search
+    ) {
 
       return res
         .status(400)
         .json({
-
-          success:false,
-
           error:
             'Nama customer wajib diisi.'
-
         });
 
     }
 
 
     /*
-      Ambil data dari Google Sheets.
-    */
+     * Ambil semua order
+     * dari Google Sheets bridge.
+     */
 
-    const data =
+    const bridgeData =
       await fetchFromAppsScript(
-        name
+        search
       );
 
 
-    const sourceOrders =
-      Array.isArray(
-        data.orders
-      )
-        ? data.orders
-        : [];
+    let sourceOrders =
+      [];
 
 
     /*
-      Ubah setiap row Google Sheets
-      menjadi format yang dipahami
-      website.
-    */
+     * Bentuk response Apps Script
+     * yang kita dukung:
+     *
+     * { orders:[...] }
+     */
 
-    const orders =
+    if (
+      Array.isArray(
+        bridgeData?.orders
+      )
+    ) {
+
+      sourceOrders =
+        bridgeData.orders;
+
+    }
+
+
+    /*
+     * Beberapa response lama
+     * mungkin memakai rows.
+     */
+
+    else if (
+      Array.isArray(
+        bridgeData?.rows
+      )
+    ) {
+
+      sourceOrders =
+        bridgeData.rows;
+
+    }
+
+
+    /*
+     * Kalau response hanya 1
+     * object order.
+     */
+
+    else if (
+      bridgeData &&
+      typeof bridgeData === 'object' &&
+      bridgeData.name
+    ) {
+
+      sourceOrders =
+        [bridgeData];
+
+    }
+
+
+    /*
+     * Normalize seluruh order.
+     */
+
+    let orders =
       sourceOrders
-        .map(
-          row => {
-
-            const order =
-              normalizeOrder(
-                row
-              );
-
-
-            /*
-              Admin membutuhkan
-              informasi lengkap untuk
-              proses edit.
-            */
-
-            if(admin){
-
-              return {
-
-                ...order,
-
-
-                sheetName:
-                  text(
-                    row.sheetName
-                  ),
-
-
-                rowNumber:
-                  Number(
-                    row.rowNumber ||
-                    0
-                  ),
-
-
-                headerRow:
-                  Number(
-                    row.headerRow ||
-                    1
-                  ),
-
-
-                headers:
-                  Array.isArray(
-                    row.headers
-                  )
-                    ? row.headers
-                    : [],
-
-
-                columns:
-                  row.columns ||
-                  {},
-
-
-                raw:
-                  Array.isArray(
-                    row.raw
-                  )
-                    ? row.raw
-                    : []
-
-              };
-
-            }
-
-
-            /*
-              Customer hanya perlu
-              data order biasa.
-            */
-
-            return order;
-
-          }
-        )
+        .map(normalizeOrder)
         .filter(
           order =>
             order.name ||
@@ -852,127 +514,52 @@ export default async function handler(
         );
 
 
-    /* =========================
-       URUTAN NEGARA
-    ========================= */
-
-    const countryOrder = [
-
-      'CHINA',
-
-      'KOREA',
-
-      'JEPANG',
-
-      'THAILAND',
-
-      'PHILIPPINES',
-
-      'LAINNYA'
-
-    ];
-
-
     /*
-      Urutkan:
+     * Filter nama sekali lagi
+     * di server supaya aman
+     * walaupun Apps Script
+     * mengembalikan lebih banyak data.
+     */
 
-      1. Negara
-      2. Row terbaru di atas
-    */
+    if (search) {
 
-    orders.sort(
-      (a,b) => {
-
-        const countryA =
-          countryOrder.indexOf(
-            a.country
-          );
+      const q =
+        normalize(search);
 
 
-        const countryB =
-          countryOrder.indexOf(
-            b.country
-          );
-
-
-        /*
-          Negara berbeda
-        */
-
-        if(
-          countryA !== countryB
-        ){
-
-          const sortA =
-            countryA === -1
-              ? 999
-              : countryA;
-
-
-          const sortB =
-            countryB === -1
-              ? 999
-              : countryB;
-
-
-          return (
-            sortA -
-            sortB
-          );
-
-        }
-
-
-        /*
-          Negara sama.
-
-          Row lebih besar =
-          data yang lebih bawah
-          di Google Sheets.
-
-          Kita letakkan lebih atas.
-        */
-
-        const rowA =
-          Number(
-            a.rowNumber ||
-            String(
-              a.orderId ||
-              ''
-            )
-            .split(':')
-            .pop() ||
-            0
-          );
-
-
-        const rowB =
-          Number(
-            b.rowNumber ||
-            String(
-              b.orderId ||
-              ''
-            )
-            .split(':')
-            .pop() ||
-            0
-          );
-
-
-        return (
-          rowB -
-          rowA
+      orders =
+        orders.filter(
+          order =>
+            normalize(
+              order.name
+            ).includes(q)
         );
 
-      }
-    );
+    }
 
 
     /*
-      =========================
-      RESPONSE
-      =========================
-    */
+     * Ambil status website.
+     *
+     * Untuk admin dan customer,
+     * status akan digabungkan
+     * berdasarkan row Google Sheets.
+     */
+
+    const updates =
+      await getWebsiteStatuses();
+
+
+    orders =
+      attachStatuses(
+        orders,
+        updates
+      );
+
+
+    /*
+     * RESPONSE
+     */
 
     return res
       .status(200)
@@ -980,30 +567,48 @@ export default async function handler(
 
         success:true,
 
-
         spreadsheetName:
-          text(
-            data.spreadsheetName
-          ),
-
+          bridgeData?.spreadsheetName || '',
 
         search:
-          name,
-
+          search,
 
         totalOrders:
           orders.length,
 
+        sheetName:
+          orders.length === 1
+            ? orders[0].sheetName
+            : bridgeData?.sheetName || '',
+
+        headerRow:
+          orders.length === 1
+            ? orders[0].headerRow
+            : bridgeData?.headerRow || 1,
+
+        headers:
+          orders.length === 1
+            ? orders[0].headers
+            : bridgeData?.headers || [],
+
+        columns:
+          orders.length === 1
+            ? orders[0].columns
+            : bridgeData?.columns || {},
+
+        sheetEditUrl:
+          SHEET_EDIT_URL,
 
         orders
 
       });
 
 
-  }catch(error){
+  } catch (error) {
+
 
     console.error(
-      'API ORDERS ERROR:',
+      'ORDERS API ERROR:',
       error
     );
 
@@ -1012,11 +617,9 @@ export default async function handler(
       .status(500)
       .json({
 
-        success:false,
-
         error:
-          error?.message ||
-          'Gagal mengambil data order.'
+          error.message ||
+          'Gagal membaca data order.'
 
       });
 
