@@ -1,7 +1,113 @@
-import { isAdmin } from './_supabase.js';
+import crypto from 'crypto';
 
 const TABLE = 'order_updates';
 
+
+/* =========================
+   CEK LOGIN ADMIN
+========================= */
+
+function verifyToken(token) {
+
+  try {
+
+    if (!token) {
+      return false;
+    }
+
+
+    const parts =
+      token.split('.');
+
+
+    if (parts.length !== 2) {
+      return false;
+    }
+
+
+    const encoded =
+      parts[0];
+
+    const signature =
+      parts[1];
+
+
+    const expected =
+      crypto
+        .createHmac(
+          'sha256',
+          process.env.AUTH_SECRET
+        )
+        .update(encoded)
+        .digest('base64url');
+
+
+    if (
+      signature !==
+      expected
+    ) {
+      return false;
+    }
+
+
+    const data =
+      JSON.parse(
+        Buffer
+          .from(
+            encoded,
+            'base64url'
+          )
+          .toString()
+      );
+
+
+    if (
+      !data?.exp ||
+      data.exp <
+      Date.now()
+    ) {
+      return false;
+    }
+
+
+    return (
+      data.username ===
+      process.env.ADMIN_USERNAME
+    );
+
+  } catch {
+
+    return false;
+
+  }
+
+}
+
+
+function isAdmin(req) {
+
+  const cookies =
+    req.headers.cookie || '';
+
+
+  const match =
+    cookies.match(
+      /admin_session=([^;]+)/
+    );
+
+
+  return verifyToken(
+    match
+      ? match[1]
+      : null
+  );
+
+}
+
+
+/* =========================
+   SUPABASE
+========================= */
 
 async function supabase(
   path,
@@ -11,11 +117,15 @@ async function supabase(
   const base =
     process.env.SUPABASE_URL;
 
+
   const key =
     process.env.SUPABASE_SECRET_KEY;
 
 
-  if (!base || !key) {
+  if (
+    !base ||
+    !key
+  ) {
 
     throw new Error(
       'Supabase environment variable belum lengkap.'
@@ -28,11 +138,13 @@ async function supabase(
     await fetch(
       `${base}/rest/v1/${path}`,
       {
+
         ...options,
 
         headers: {
 
-          apikey: key,
+          apikey:
+            key,
 
           Authorization:
             `Bearer ${key}`,
@@ -52,7 +164,8 @@ async function supabase(
     await response.text();
 
 
-  let data = null;
+  let data =
+    null;
 
 
   try {
@@ -64,12 +177,15 @@ async function supabase(
 
   } catch {
 
-    data = raw;
+    data =
+      raw;
 
   }
 
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
 
     throw new Error(
 
@@ -93,6 +209,10 @@ async function supabase(
 }
 
 
+/* =========================
+   API
+========================= */
+
 export default async function handler(
   req,
   res
@@ -101,13 +221,13 @@ export default async function handler(
   try {
 
 
-    /*
-     * =========================
-     * CEK ADMIN
-     * =========================
-     */
+    /* =========================
+       ADMIN CHECK
+    ========================= */
 
-    if (!isAdmin(req)) {
+    if (
+      !isAdmin(req)
+    ) {
 
       return res
         .status(401)
@@ -121,13 +241,13 @@ export default async function handler(
     }
 
 
-    /*
-     * =========================
-     * GET
-     * =========================
-     */
+    /* =========================
+       GET
+    ========================= */
 
-    if (req.method === 'GET') {
+    if (
+      req.method === 'GET'
+    ) {
 
       const rowNumber =
         Number(
@@ -139,7 +259,9 @@ export default async function handler(
         `${TABLE}?select=id,row_number,customer_name,status,note,photo,updated_at&order=updated_at.desc`;
 
 
-      if (rowNumber) {
+      if (
+        rowNumber
+      ) {
 
         query =
           `${TABLE}?select=id,row_number,customer_name,status,note,photo,updated_at` +
@@ -153,7 +275,8 @@ export default async function handler(
         await supabase(
           query,
           {
-            method: 'GET'
+            method:
+              'GET'
           }
         );
 
@@ -162,7 +285,8 @@ export default async function handler(
         .status(200)
         .json({
 
-          success: true,
+          success:
+            true,
 
           updates:
             rows || []
@@ -172,13 +296,14 @@ export default async function handler(
     }
 
 
-    /*
-     * =========================
-     * HANYA POST
-     * =========================
-     */
+    /* =========================
+       POST SAJA
+    ========================= */
 
-    if (req.method !== 'POST') {
+    if (
+      req.method !==
+      'POST'
+    ) {
 
       return res
         .status(405)
@@ -192,11 +317,9 @@ export default async function handler(
     }
 
 
-    /*
-     * =========================
-     * BACA BODY
-     * =========================
-     */
+    /* =========================
+       BODY
+    ========================= */
 
     let body =
       req.body;
@@ -210,22 +333,23 @@ export default async function handler(
       try {
 
         body =
-          JSON.parse(body);
+          JSON.parse(
+            body
+          );
 
       } catch {
 
-        body = {};
+        body =
+          {};
 
       }
 
     }
 
 
-    /*
-     * =========================
-     * DATA
-     * =========================
-     */
+    /* =========================
+       DATA
+    ========================= */
 
     const rowNumber =
       Number(
@@ -274,13 +398,13 @@ export default async function handler(
     ];
 
 
-    /*
-     * =========================
-     * VALIDASI
-     * =========================
-     */
+    /* =========================
+       VALIDATION
+    ========================= */
 
-    if (!rowNumber) {
+    if (
+      !rowNumber
+    ) {
 
       return res
         .status(400)
@@ -294,7 +418,9 @@ export default async function handler(
     }
 
 
-    if (!customerName) {
+    if (
+      !customerName
+    ) {
 
       return res
         .status(400)
@@ -326,11 +452,9 @@ export default async function handler(
     }
 
 
-    /*
-     * =========================
-     * CEK APAKAH ROW SUDAH ADA
-     * =========================
-     */
+    /* =========================
+       CEK DATA EXISTING
+    ========================= */
 
     const existing =
       await supabase(
@@ -375,16 +499,13 @@ export default async function handler(
     };
 
 
-    /*
-     * =========================
-     * KALAU SUDAH ADA
-     * → UPDATE
-     * =========================
-     */
+    /* =========================
+       UPDATE
+    ========================= */
 
     if (
       Array.isArray(existing) &&
-      existing.length
+      existing.length > 0
     ) {
 
       const existingId =
@@ -440,14 +561,11 @@ export default async function handler(
     }
 
 
-    /*
-     * =========================
-     * KALAU BELUM ADA
-     * → INSERT
-     * =========================
-     */
+    /* =========================
+       INSERT BARU
+    ========================= */
 
-    const insertData = {
+    const newRow = {
 
       id:
         Number(
@@ -495,7 +613,7 @@ export default async function handler(
 
           body:
             JSON.stringify(
-              insertData
+              newRow
             )
 
         }
@@ -516,9 +634,9 @@ export default async function handler(
         update:
           Array.isArray(inserted)
             ? inserted[0] ||
-              insertData
+              newRow
             : inserted ||
-              insertData
+              newRow
 
       });
 
