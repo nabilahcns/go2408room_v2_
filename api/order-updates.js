@@ -3,30 +3,17 @@ import crypto from 'crypto';
 const TABLE = 'order_updates';
 
 
-/* =========================================
-   CEK LOGIN ADMIN
-========================================= */
-
 function verifyToken(token) {
 
   try {
 
-    if (!token) {
-      return false;
-    }
+    if (!token) return false;
 
-    const parts =
-      token.split('.');
+    const parts = token.split('.');
 
-    if (parts.length !== 2) {
-      return false;
-    }
+    if (parts.length !== 2) return false;
 
-    const encoded =
-      parts[0];
-
-    const signature =
-      parts[1];
+    const [encoded, signature] = parts;
 
     const expected =
       crypto
@@ -37,28 +24,20 @@ function verifyToken(token) {
         .update(encoded)
         .digest('base64url');
 
-    if (
-      signature !==
-      expected
-    ) {
+    if (signature !== expected) {
       return false;
     }
 
     const data =
       JSON.parse(
         Buffer
-          .from(
-            encoded,
-            'base64url'
-          )
+          .from(encoded, 'base64url')
           .toString()
       );
 
-    if (
-      !data?.exp ||
-      data.exp <
-      Date.now()
-    ) {
+    if (!data?.exp) return false;
+
+    if (data.exp < Date.now()) {
       return false;
     }
 
@@ -87,17 +66,11 @@ function isAdmin(req) {
     );
 
   return verifyToken(
-    match
-      ? match[1]
-      : null
+    match ? match[1] : null
   );
 
 }
 
-
-/* =========================================
-   SUPABASE HELPER
-========================================= */
 
 async function supabase(
   path,
@@ -111,10 +84,7 @@ async function supabase(
     process.env.SUPABASE_SECRET_KEY;
 
 
-  if (
-    !base ||
-    !key
-  ) {
+  if (!base || !key) {
 
     throw new Error(
       'Supabase environment variable belum lengkap.'
@@ -127,13 +97,10 @@ async function supabase(
     await fetch(
       `${base}/rest/v1/${path}`,
       {
-
         ...options,
 
         headers: {
-
-          apikey:
-            key,
+          apikey:key,
 
           Authorization:
             `Bearer ${key}`,
@@ -153,8 +120,7 @@ async function supabase(
     await response.text();
 
 
-  let data =
-    null;
+  let data = null;
 
 
   try {
@@ -166,28 +132,19 @@ async function supabase(
 
   } catch {
 
-    data =
-      raw;
+    data = raw;
 
   }
 
 
-  if (
-    !response.ok
-  ) {
+  if (!response.ok) {
 
     throw new Error(
-
       data?.message ||
-
       data?.hint ||
-
       data?.details ||
-
       data?.error ||
-
       `Supabase request gagal (${response.status}).`
-
     );
 
   }
@@ -198,10 +155,6 @@ async function supabase(
 }
 
 
-/* =========================================
-   API HANDLER
-========================================= */
-
 export default async function handler(
   req,
   res
@@ -210,72 +163,59 @@ export default async function handler(
   try {
 
 
-    /* =====================================
-       ADMIN ONLY
-    ===================================== */
+    /*
+     * ============================
+     * GET
+     * ============================
+     */
 
-    if (
-      !isAdmin(req)
-    ) {
-
-      return res
-        .status(401)
-        .json({
-
-          error:
-            'Unauthorized. Silakan login sebagai admin.'
-
-        });
-
-    }
+    if (req.method === 'GET') {
 
 
-    /* =====================================
-       GET
-    ===================================== */
+      if (!isAdmin(req)) {
 
-    if (
-      req.method === 'GET'
-    ) {
-
-      const rowNumber =
-        Number(
-
-          req.query?.row_number ??
-
-          req.query?.rowNumber ??
-
-          req.query?.row ??
-
-          0
-
-        );
-
-
-      let query =
-        `${TABLE}?select=id,row_number,customer_name,status,note,photo,updated_at&order=updated_at.desc`;
-
-
-      if (
-        rowNumber > 0
-      ) {
-
-        query =
-          `${TABLE}?select=id,row_number,customer_name,status,note,photo,updated_at` +
-
-          `&row_number=eq.${encodeURIComponent(rowNumber)}` +
-
-          `&order=updated_at.desc`;
+        return res
+          .status(401)
+          .json({
+            error:
+              'Unauthorized. Silakan login sebagai admin.'
+          });
 
       }
 
 
+      const queryRow =
+        req.query?.row_number ??
+        req.query?.rowNumber ??
+        req.query?.row ??
+        '';
+
+
+      const rowNumber =
+        Number(queryRow);
+
+
+      let filter =
+        '?select=id,row_number,customer_name,status,note,photo,updated_at';
+
+
+      if (rowNumber) {
+
+        filter +=
+          `&row_number=eq.${encodeURIComponent(rowNumber)}`;
+
+      }
+
+
+      filter +=
+        '&order=updated_at.desc';
+
+
       const rows =
         await supabase(
-          query,
+          `${TABLE}${filter}`,
           {
-            method:
-              'GET'
+            method:'GET'
           }
         );
 
@@ -283,178 +223,193 @@ export default async function handler(
       return res
         .status(200)
         .json({
-
-          success:
-            true,
-
-          updates:
-            rows || []
-
+          success:true,
+          updates:rows || []
         });
 
     }
 
 
-    /* =====================================
-       POST
-    ===================================== */
+    /*
+     * ============================
+     * METHOD CHECK
+     * ============================
+     */
 
-    if (
-      req.method !== 'POST'
-    ) {
+    if (req.method !== 'POST') {
 
       return res
         .status(405)
         .json({
-
-          error:
-            'Method not allowed'
-
+          error:'Method not allowed'
         });
 
     }
 
 
-    /* =====================================
-       BACA BODY
-    ===================================== */
+    /*
+     * ============================
+     * ADMIN CHECK
+     * ============================
+     */
 
-    let body =
-      req.body;
+    if (!isAdmin(req)) {
+
+      return res
+        .status(401)
+        .json({
+          error:
+            'Unauthorized. Silakan login sebagai admin.'
+        });
+
+    }
 
 
-    if (
-      typeof body ===
-      'string'
-    ) {
+    /*
+     * ============================
+     * READ BODY
+     * ============================
+     */
+
+    let body = req.body;
+
+
+    if (typeof body === 'string') {
 
       try {
 
         body =
-          JSON.parse(
-            body
-          );
+          JSON.parse(body);
 
       } catch {
 
-        body =
-          {};
+        body = {};
 
       }
 
     }
 
 
-    if (
-      !body ||
-      typeof body !==
-      'object'
-    ) {
+    if (!body || typeof body !== 'object') {
 
-      body =
-        {};
+      body = {};
 
     }
 
 
-    /* =====================================
-       ROW NUMBER
-       
-       Terima SEMUA format:
-       row_number
-       rowNumber
-       row
-    ===================================== */
+    /*
+     * ============================
+     * AMBIL ROW DARI SEMUA
+     * KEMUNGKINAN FORMAT
+     * ============================
+     */
 
-    let rowNumber =
-      Number(
+    const possibleRows = [
 
-        body?.row_number ??
+      body.row_number,
 
-        body?.rowNumber ??
+      body.rowNumber,
 
-        body?.row ??
+      body.row,
 
-        body?.order?.row_number ??
+      body.googleSheetRow,
 
-        body?.order?.rowNumber ??
+      body.order?.row_number,
 
-        body?.order?.row ??
+      body.order?.rowNumber,
 
-        0
+      body.order?.row,
 
-      );
+      body.order?.metadata?.rowNumber,
+
+      body.order?.metadata?.row_number,
+
+      body.metadata?.rowNumber,
+
+      body.metadata?.row_number
+
+    ];
 
 
-    /* =====================================
-       CUSTOMER NAME
-    ===================================== */
+    let rowNumber = 0;
 
-    let customerName =
+
+    for (const value of possibleRows) {
+
+      const n = Number(value);
+
+      if (
+        Number.isFinite(n) &&
+        n > 0
+      ) {
+
+        rowNumber = n;
+
+        break;
+
+      }
+
+    }
+
+
+    /*
+     * ============================
+     * CUSTOMER NAME
+     * ============================
+     */
+
+    const customerName =
       String(
 
-        body?.customer_name ??
+        body.customer_name ||
 
-        body?.customerName ??
+        body.customerName ||
 
-        body?.name ??
+        body.order?.name ||
 
-        body?.order?.customer_name ??
-
-        body?.order?.customerName ??
-
-        body?.order?.name ??
+        body.order?.customer_name ||
 
         ''
 
       ).trim();
 
 
-    /* =====================================
-       STATUS
-    ===================================== */
+    /*
+     * ============================
+     * STATUS
+     * ============================
+     */
 
     const status =
       String(
-
-        body?.status ??
-
+        body.status ||
         'Belum di CO'
-
       ).trim();
 
 
-    /* =====================================
-       NOTE
-    ===================================== */
+    /*
+     * ============================
+     * NOTE / PHOTO
+     * ============================
+     */
 
     const note =
       String(
-
-        body?.note ??
-
-        ''
-
+        body.note || ''
       );
 
-
-    /* =====================================
-       PHOTO
-    ===================================== */
 
     const photo =
       String(
-
-        body?.photo ??
-
-        ''
-
+        body.photo || ''
       );
 
 
-    /* =====================================
-       VALID STATUS
-    ===================================== */
+    /*
+     * ============================
+     * ALLOWED STATUS
+     * ============================
+     */
 
     const allowedStatuses = [
 
@@ -469,64 +424,70 @@ export default async function handler(
     ];
 
 
-    /* =====================================
-       VALIDASI ROW
-    ===================================== */
+    /*
+     * ============================
+     * VALIDASI ROW
+     * ============================
+     */
 
-    if (
-      !rowNumber ||
-      rowNumber < 1
-    ) {
-
-      return res
-        .status(400)
-        .json({
-
-          error:
-            'Row customer tidak ditemukan.',
-
-          received:
-            {
-
-              row_number:
-                body?.row_number ?? null,
-
-              rowNumber:
-                body?.rowNumber ?? null,
-
-              row:
-                body?.row ?? null
-
-            }
-
-        });
-
-    }
-
-
-    /* =====================================
-       VALIDASI NAMA
-    ===================================== */
-
-    if (
-      !customerName
-    ) {
+    if (!rowNumber) {
 
       return res
         .status(400)
         .json({
 
           error:
-            'Nama customer tidak ditemukan.'
+            'Nomor row Google Sheets tidak terbaca dari order yang dipilih.',
+
+          received: {
+
+            row_number:
+              body.row_number ?? null,
+
+            rowNumber:
+              body.rowNumber ?? null,
+
+            row:
+              body.row ?? null,
+
+            orderRowNumber:
+              body.order?.rowNumber ?? null,
+
+            orderRow:
+              body.order?.row ?? null
+
+          }
 
         });
 
     }
 
 
-    /* =====================================
-       VALIDASI STATUS
-    ===================================== */
+    /*
+     * ============================
+     * VALIDASI CUSTOMER
+     * ============================
+     */
+
+    if (!customerName) {
+
+      return res
+        .status(400)
+        .json({
+
+          error:
+            'Nama customer wajib diisi.'
+
+        });
+
+    }
+
+
+    /*
+     * ============================
+     * VALIDASI STATUS
+     * ============================
+     */
 
     if (
       !allowedStatuses.includes(
@@ -546,136 +507,16 @@ export default async function handler(
     }
 
 
-    /* =====================================
-       CEK DATA EXISTING
-    ===================================== */
+    /*
+     * ============================
+     * DATA UNTUK SUPABASE
+     * ============================
+     */
 
-    const existing =
-      await supabase(
-
-        `${TABLE}?select=id,row_number,customer_name,status,note,photo,updated_at` +
-
-        `&row_number=eq.${encodeURIComponent(rowNumber)}` +
-
-        `&limit=1`,
-
-        {
-
-          method:
-            'GET'
-
-        }
-
-      );
-
-
-    const now =
-      new Date()
-        .toISOString();
-
-
-    const rowData = {
-
-      row_number:
-        rowNumber,
-
-      customer_name:
-        customerName,
-
-      status:
-        status,
-
-      note:
-        note,
-
-      photo:
-        photo,
-
-      updated_at:
-        now
-
-    };
-
-
-    /* =====================================
-       KALAU SUDAH ADA
-       → UPDATE
-    ===================================== */
-
-    if (
-      Array.isArray(existing) &&
-      existing.length > 0
-    ) {
-
-      const existingId =
-        existing[0].id;
-
-
-      const updated =
-        await supabase(
-
-          `${TABLE}?id=eq.${encodeURIComponent(existingId)}`,
-
-          {
-
-            method:
-              'PATCH',
-
-            headers: {
-
-              Prefer:
-                'return=representation'
-
-            },
-
-            body:
-              JSON.stringify(
-                rowData
-              )
-
-          }
-
-        );
-
-
-      return res
-        .status(200)
-        .json({
-
-          success:
-            true,
-
-          action:
-            'updated',
-
-          rowNumber:
-            rowNumber,
-
-          update:
-            Array.isArray(updated)
-
-              ? updated[0] ||
-                rowData
-
-              : updated ||
-                rowData
-
-        });
-
-    }
-
-
-    /* =====================================
-       KALAU BELUM ADA
-       → INSERT
-    ===================================== */
-
-    const newRow = {
+    const row = {
 
       id:
-        Number(
-          body?.id
-        ) ||
+        Number(body.id) ||
         Date.now(),
 
       row_number:
@@ -694,59 +535,60 @@ export default async function handler(
         photo,
 
       updated_at:
-        now
+        new Date().toISOString()
 
     };
 
 
-    const inserted =
+    /*
+     * ============================
+     * UPSERT
+     * ============================
+     *
+     * row_number pada tabel sekarang
+     * dibuat UNIQUE.
+     */
+
+    const data =
       await supabase(
 
-        TABLE,
+        `${TABLE}?on_conflict=row_number`,
 
         {
 
-          method:
-            'POST',
+          method:'POST',
 
-          headers: {
+          headers:{
 
             Prefer:
-              'return=representation'
+              'resolution=merge-duplicates,return=representation'
 
           },
 
           body:
-            JSON.stringify(
-              newRow
-            )
+            JSON.stringify(row)
 
         }
 
       );
 
 
+    /*
+     * ============================
+     * RESPONSE
+     * ============================
+     */
+
     return res
       .status(200)
       .json({
 
-        success:
-          true,
-
-        action:
-          'created',
-
-        rowNumber:
-          rowNumber,
+        success:true,
 
         update:
-          Array.isArray(inserted)
-
-            ? inserted[0] ||
-              newRow
-
-            : inserted ||
-              newRow
+          Array.isArray(data)
+            ? data[0] || row
+            : data || row
 
       });
 
