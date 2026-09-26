@@ -1,358 +1,120 @@
-import { isAdmin } from './_supabase.js';
+import crypto from 'crypto';
 
-function clean(value) {
-  return String(value ?? '').trim();
-}
 
-function parseBody(req) {
-  if (!req.body) {
-    return {};
-  }
+const BRIDGE_URL =
+  process.env.GOOGLE_SHEETS_BRIDGE_URL || '';
 
-  if (typeof req.body === 'object') {
-    return req.body;
-  }
-
-  try {
-    return JSON.parse(req.body);
-  } catch {
-    return {};
-  }
-}
-
-function getBridgeConfig() {
-  const url =
-    clean(
-      process.env.GOOGLE_SHEETS_BRIDGE_URL
-    );
-
-  const token =
-    clean(
-      process.env.GOOGLE_SHEETS_BRIDGE_TOKEN
-    );
-
-  if (!url || !token) {
-    throw new Error(
-      'Koneksi Google Sheets belum dikonfigurasi di server.'
-    );
-  }
-
-  return {
-    url,
-    token
-  };
-}
+const BRIDGE_TOKEN =
+  process.env.GOOGLE_SHEETS_BRIDGE_TOKEN || '';
 
 
 /*
- * Memanggil Google Apps Script
+ * ============================
+ * ADMIN AUTH
+ * ============================
  */
-async function callAppsScript({
-  method = 'GET',
-  params = {},
-  body = null
-}) {
 
-  const {
-    url,
-    token
-  } = getBridgeConfig();
+function verifyToken(token) {
+
+  try {
+
+    if (!token) {
+      return false;
+    }
 
 
-  const endpoint =
-    new URL(url);
+    const parts =
+      token.split('.');
 
 
-  /*
-   * Token selalu dikirim dari backend.
-   * Token tidak pernah ditaruh di frontend.
-   */
-  endpoint.searchParams.set(
-    'token',
-    token
-  );
+    if (parts.length !== 2) {
+      return false;
+    }
 
 
-  for (
-    const [key, value]
-    of Object.entries(params)
-  ) {
+    const [
+      encoded,
+      signature
+    ] = parts;
+
+
+    const expected =
+      crypto
+        .createHmac(
+          'sha256',
+          process.env.AUTH_SECRET
+        )
+        .update(encoded)
+        .digest('base64url');
+
 
     if (
-      value !== undefined &&
-      value !== null &&
-      value !== ''
+      signature !== expected
     ) {
+      return false;
+    }
 
-      endpoint.searchParams.set(
-        key,
-        String(value)
+
+    const data =
+      JSON.parse(
+        Buffer
+          .from(
+            encoded,
+            'base64url'
+          )
+          .toString()
       );
 
+
+    if (
+      !data?.exp ||
+      data.exp < Date.now()
+    ) {
+      return false;
     }
 
-  }
 
-
-  const options = {
-    method,
-
-    redirect: 'follow',
-
-    headers: {
-      Accept:
-        'application/json'
-    }
-  };
-
-
-  if (body !== null) {
-
-    options.headers[
-      'Content-Type'
-    ] =
-      'application/json';
-
-    options.body =
-      JSON.stringify(body);
-
-  }
-
-
-  const response =
-    await fetch(
-      endpoint.toString(),
-      options
+    return (
+      data.username ===
+      process.env.ADMIN_USERNAME
     );
 
-
-  const text =
-    await response.text();
-
-
-  let data;
-
-
-  try {
-
-    data =
-      text
-        ? JSON.parse(text)
-        : {};
 
   } catch {
 
-    throw new Error(
-      'Google Sheets memberikan respons yang tidak dapat dibaca.'
-    );
+    return false;
 
   }
 
+}
 
-  if (!response.ok) {
 
-    console.error(
-      'Apps Script HTTP error:',
-      response.status,
-      data
+function isAdmin(req) {
+
+  const cookies =
+    req.headers.cookie || '';
+
+
+  const match =
+    cookies.match(
+      /admin_session=([^;]+)/
     );
 
-    throw new Error(
-      'Koneksi ke Google Sheets gagal.'
-    );
 
-  }
-
-
-  if (
-    data?.success === false
-  ) {
-
-    console.error(
-      'Apps Script returned error:',
-      data
-    );
-
-    throw new Error(
-      'Google Sheets menolak permintaan.'
-    );
-
-  }
-
-
-  return data;
+  return verifyToken(
+    match
+      ? match[1]
+      : null
+  );
 
 }
 
 
 /*
- * GET
- *
- * Dipakai Admin untuk:
- * - test koneksi
- * - membaca data Google Sheets
- *
- * GET /api/sheets
+ * ============================
+ * MAIN API
+ * ============================
  */
-async function handleGet(
-  req,
-  res
-) {
-
-  const name =
-    clean(
-      req.query?.name
-    );
-
-
-  const data =
-    await callAppsScript({
-      method: 'GET',
-
-      params:
-        name
-          ? {
-              name
-            }
-          : {}
-    });
-
-
-  return res
-    .status(200)
-    .json({
-      success: true,
-
-      data
-    });
-
-}
-
-
-/*
- * POST
- *
- * Dipakai Admin untuk mengedit
- * satu row di Google Sheets.
- *
- * Body:
- *
- * {
- *   rowNumber: 15,
- *   values: [...]
- * }
- */
-async function handlePost(
-  req,
-  res
-) {
-
-  const body =
-    parseBody(req);
-
-
-  const rowNumber =
-    Number(
-      body.rowNumber
-    );
-
-
-  const values =
-    Array.isArray(
-      body.values
-    )
-      ? body.values
-      : null;
-
-
-  const sheetName =
-    clean(
-      body.sheetName
-    ) ||
-    'REKAPAN';
-
-
-  if (
-    !rowNumber ||
-    rowNumber < 2
-  ) {
-
-    return res
-      .status(400)
-      .json({
-        error:
-          'Nomor row Google Sheets tidak valid.'
-      });
-
-  }
-
-
-  if (
-    !values ||
-    !values.length
-  ) {
-
-    return res
-      .status(400)
-      .json({
-        error:
-          'Data order tidak tersedia.'
-      });
-
-  }
-
-
-  /*
-   * Token dikirim sebagai body
-   * ke Apps Script.
-   *
-   * callAppsScript tetap juga menambahkan
-   * token sebagai query parameter.
-   */
-  const {
-    token
-  } =
-    getBridgeConfig();
-
-
-  const data =
-    await callAppsScript({
-
-      method: 'POST',
-
-      body: {
-
-        token,
-
-        action:
-          'updateRow',
-
-        rowNumber,
-
-        sheetName,
-
-        values
-
-      }
-
-    });
-
-
-  return res
-    .status(200)
-    .json({
-
-      success: true,
-
-      message:
-        'Google Sheets berhasil diperbarui.',
-
-      data
-
-    });
-
-}
-
 
 export default async function handler(
   req,
@@ -361,60 +123,382 @@ export default async function handler(
 
   try {
 
+
     /*
-     * Hanya Admin yang boleh
-     * membaca seluruh data lewat
-     * endpoint ini dan terutama
-     * melakukan perubahan.
+     * Hanya POST
      */
-    if (!isAdmin(req)) {
+
+    if (
+      req.method !== 'POST'
+    ) {
+
+      return res
+        .status(405)
+        .json({
+
+          error:
+            'Method not allowed'
+
+        });
+
+    }
+
+
+    /*
+     * Pastikan admin login
+     */
+
+    if (
+      !isAdmin(req)
+    ) {
 
       return res
         .status(401)
         .json({
+
           error:
-            'Unauthorized'
+            'Unauthorized. Silakan login sebagai admin.'
+
+        });
+
+    }
+
+
+    /*
+     * Environment check
+     */
+
+    if (!BRIDGE_URL) {
+
+      return res
+        .status(500)
+        .json({
+
+          error:
+            'GOOGLE_SHEETS_BRIDGE_URL belum diatur di Vercel.'
+
+        });
+
+    }
+
+
+    if (!BRIDGE_TOKEN) {
+
+      return res
+        .status(500)
+        .json({
+
+          error:
+            'GOOGLE_SHEETS_BRIDGE_TOKEN belum diatur di Vercel.'
+
+        });
+
+    }
+
+
+    /*
+     * Baca body
+     */
+
+    let body =
+      req.body;
+
+
+    if (
+      typeof body === 'string'
+    ) {
+
+      try {
+
+        body =
+          JSON.parse(body);
+
+      } catch {
+
+        body = {};
+
+      }
+
+    }
+
+
+    if (
+      !body ||
+      typeof body !== 'object'
+    ) {
+
+      body = {};
+
+    }
+
+
+    /*
+     * ============================
+     * ROW NUMBER
+     * ============================
+     */
+
+    const rowNumber =
+      Number(
+        body.rowNumber ??
+        body.row_number ??
+        body.row ??
+        body.googleSheetRow ??
+        0
+      );
+
+
+    /*
+     * ============================
+     * SHEET NAME
+     * ============================
+     */
+
+    const sheetName =
+      String(
+
+        body.sheetName ||
+
+        body.sheet_name ||
+
+        'REKAPAN'
+
+      ).trim();
+
+
+    /*
+     * ============================
+     * VALUES
+     * ============================
+     */
+
+    const values =
+      Array.isArray(
+        body.values
+      )
+        ? body.values
+        : null;
+
+
+    /*
+     * ============================
+     * VALIDATION
+     * ============================
+     */
+
+    if (!rowNumber) {
+
+      return res
+        .status(400)
+        .json({
+
+          error:
+            'rowNumber wajib diisi.'
+
+        });
+
+    }
+
+
+    if (!values) {
+
+      return res
+        .status(400)
+        .json({
+
+          error:
+            'values wajib berupa array.'
+
+        });
+
+    }
+
+
+    if (!values.length) {
+
+      return res
+        .status(400)
+        .json({
+
+          error:
+            'Data values kosong.'
+
+        });
+
+    }
+
+
+    /*
+     * ============================
+     * KIRIM KE GOOGLE APPS SCRIPT
+     * ============================
+     */
+
+    const payload = {
+
+      token:
+        BRIDGE_TOKEN,
+
+      sheetName:
+        sheetName,
+
+      rowNumber:
+        rowNumber,
+
+      values:
+        values.slice(
+          0,
+          10
+        )
+
+    };
+
+
+    const response =
+      await fetch(
+        BRIDGE_URL,
+        {
+
+          method:
+            'POST',
+
+          headers:{
+
+            'Content-Type':
+              'application/json',
+
+            Accept:
+              'application/json'
+
+          },
+
+          body:
+            JSON.stringify(
+              payload
+            )
+
+        }
+      );
+
+
+    /*
+     * Ambil response sebagai text
+     * dulu karena Apps Script
+     * kadang mengembalikan
+     * response yang bukan JSON
+     * secara langsung.
+     */
+
+    const raw =
+      await response.text();
+
+
+    let data;
+
+
+    try {
+
+      data =
+        raw
+          ? JSON.parse(raw)
+          : {};
+
+    } catch {
+
+      return res
+        .status(502)
+        .json({
+
+          error:
+            'Google Apps Script mengembalikan response yang tidak valid.',
+
+          bridgeStatus:
+            response.status,
+
+          bridgeResponse:
+            raw.slice(
+              0,
+              500
+            )
+
+        });
+
+    }
+
+
+    /*
+     * ============================
+     * CEK ERROR DARI BRIDGE
+     * ============================
+     */
+
+    if (
+      !response.ok
+    ) {
+
+      return res
+        .status(502)
+        .json({
+
+          error:
+            data?.error ||
+            `Google Sheets bridge gagal (${response.status}).`,
+
+          bridge:
+            data
+
         });
 
     }
 
 
     if (
-      req.method === 'GET'
+      data?.ok === false ||
+      data?.success === false
     ) {
 
-      return handleGet(
-        req,
-        res
-      );
+      return res
+        .status(502)
+        .json({
+
+          error:
+            data?.error ||
+            'Google Sheets bridge menolak request.',
+
+          bridge:
+            data
+
+        });
 
     }
 
 
-    if (
-      req.method === 'POST'
-    ) {
-
-      return handlePost(
-        req,
-        res
-      );
-
-    }
-
+    /*
+     * ============================
+     * BERHASIL
+     * ============================
+     */
 
     return res
-      .status(405)
+      .status(200)
       .json({
-        error:
-          'Method not allowed.'
+
+        success:true,
+
+        rowNumber,
+
+        sheetName,
+
+        bridge:data
+
       });
 
 
   } catch (error) {
 
+
     console.error(
-      'sheets.js error:',
+      'SHEETS API ERROR:',
       error
     );
 
@@ -422,9 +506,11 @@ export default async function handler(
     return res
       .status(500)
       .json({
+
         error:
-          error?.message ||
-          'Koneksi ke Google Sheets sedang bermasalah.'
+          error.message ||
+          'Gagal memperbarui Google Sheets.'
+
       });
 
   }
