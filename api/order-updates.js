@@ -7,13 +7,21 @@ function verifyToken(token) {
 
   try {
 
-    if (!token) return false;
+    if (!token) {
+      return false;
+    }
 
-    const parts = token.split('.');
+    const parts =
+      token.split('.');
 
-    if (parts.length !== 2) return false;
+    if (parts.length !== 2) {
+      return false;
+    }
 
-    const [encoded, signature] = parts;
+    const [
+      encoded,
+      signature
+    ] = parts;
 
     const expected =
       crypto
@@ -31,13 +39,17 @@ function verifyToken(token) {
     const data =
       JSON.parse(
         Buffer
-          .from(encoded, 'base64url')
+          .from(
+            encoded,
+            'base64url'
+          )
           .toString()
       );
 
-    if (!data?.exp) return false;
-
-    if (data.exp < Date.now()) {
+    if (
+      !data?.exp ||
+      data.exp < Date.now()
+    ) {
       return false;
     }
 
@@ -66,7 +78,9 @@ function isAdmin(req) {
     );
 
   return verifyToken(
-    match ? match[1] : null
+    match
+      ? match[1]
+      : null
   );
 
 }
@@ -100,6 +114,7 @@ async function supabase(
         ...options,
 
         headers: {
+
           apikey:key,
 
           Authorization:
@@ -164,13 +179,12 @@ export default async function handler(
 
 
     /*
-     * ============================
+     * ==========================
      * GET
-     * ============================
+     * ==========================
      */
 
     if (req.method === 'GET') {
-
 
       if (!isAdmin(req)) {
 
@@ -184,25 +198,23 @@ export default async function handler(
       }
 
 
-      const queryRow =
-        req.query?.row_number ??
-        req.query?.rowNumber ??
-        req.query?.row ??
-        '';
-
-
-      const rowNumber =
-        Number(queryRow);
+      const requestedRow =
+        Number(
+          req.query?.row_number ??
+          req.query?.rowNumber ??
+          req.query?.row ??
+          0
+        );
 
 
       let filter =
         '?select=id,row_number,customer_name,status,note,photo,updated_at';
 
 
-      if (rowNumber) {
+      if (requestedRow > 0) {
 
         filter +=
-          `&row_number=eq.${encodeURIComponent(rowNumber)}`;
+          `&row_number=eq.${encodeURIComponent(requestedRow)}`;
 
       }
 
@@ -224,16 +236,19 @@ export default async function handler(
         .status(200)
         .json({
           success:true,
-          updates:rows || []
+          updates:
+            Array.isArray(rows)
+              ? rows
+              : []
         });
 
     }
 
 
     /*
-     * ============================
-     * METHOD CHECK
-     * ============================
+     * ==========================
+     * POST ONLY
+     * ==========================
      */
 
     if (req.method !== 'POST') {
@@ -241,16 +256,17 @@ export default async function handler(
       return res
         .status(405)
         .json({
-          error:'Method not allowed'
+          error:
+            'Method not allowed'
         });
 
     }
 
 
     /*
-     * ============================
-     * ADMIN CHECK
-     * ============================
+     * ==========================
+     * ADMIN LOGIN
+     * ==========================
      */
 
     if (!isAdmin(req)) {
@@ -266,15 +282,18 @@ export default async function handler(
 
 
     /*
-     * ============================
-     * READ BODY
-     * ============================
+     * ==========================
+     * BODY
+     * ==========================
      */
 
-    let body = req.body;
+    let body =
+      req.body;
 
 
-    if (typeof body === 'string') {
+    if (
+      typeof body === 'string'
+    ) {
 
       try {
 
@@ -290,7 +309,10 @@ export default async function handler(
     }
 
 
-    if (!body || typeof body !== 'object') {
+    if (
+      !body ||
+      typeof body !== 'object'
+    ) {
 
       body = {};
 
@@ -298,10 +320,9 @@ export default async function handler(
 
 
     /*
-     * ============================
-     * AMBIL ROW DARI SEMUA
-     * KEMUNGKINAN FORMAT
-     * ============================
+     * ==========================
+     * ROW NUMBER
+     * ==========================
      */
 
     const possibleRows = [
@@ -334,9 +355,14 @@ export default async function handler(
     let rowNumber = 0;
 
 
-    for (const value of possibleRows) {
+    for (
+      const value
+      of possibleRows
+    ) {
 
-      const n = Number(value);
+      const n =
+        Number(value);
+
 
       if (
         Number.isFinite(n) &&
@@ -353,9 +379,9 @@ export default async function handler(
 
 
     /*
-     * ============================
+     * ==========================
      * CUSTOMER NAME
-     * ============================
+     * ==========================
      */
 
     const customerName =
@@ -375,9 +401,9 @@ export default async function handler(
 
 
     /*
-     * ============================
+     * ==========================
      * STATUS
-     * ============================
+     * ==========================
      */
 
     const status =
@@ -386,12 +412,6 @@ export default async function handler(
         'Belum di CO'
       ).trim();
 
-
-    /*
-     * ============================
-     * NOTE / PHOTO
-     * ============================
-     */
 
     const note =
       String(
@@ -404,12 +424,6 @@ export default async function handler(
         body.photo || ''
       );
 
-
-    /*
-     * ============================
-     * ALLOWED STATUS
-     * ============================
-     */
 
     const allowedStatuses = [
 
@@ -425,9 +439,9 @@ export default async function handler(
 
 
     /*
-     * ============================
-     * VALIDASI ROW
-     * ============================
+     * ==========================
+     * VALIDATION
+     * ==========================
      */
 
     if (!rowNumber) {
@@ -437,37 +451,12 @@ export default async function handler(
         .json({
 
           error:
-            'Nomor row Google Sheets tidak terbaca dari order yang dipilih.',
-
-          received: {
-
-            row_number:
-              body.row_number ?? null,
-
-            rowNumber:
-              body.rowNumber ?? null,
-
-            row:
-              body.row ?? null,
-
-            orderRowNumber:
-              body.order?.rowNumber ?? null,
-
-            orderRow:
-              body.order?.row ?? null
-
-          }
+            'Nomor row Google Sheets tidak terbaca.'
 
         });
 
     }
 
-
-    /*
-     * ============================
-     * VALIDASI CUSTOMER
-     * ============================
-     */
 
     if (!customerName) {
 
@@ -482,12 +471,6 @@ export default async function handler(
 
     }
 
-
-    /*
-     * ============================
-     * VALIDASI STATUS
-     * ============================
-     */
 
     if (
       !allowedStatuses.includes(
@@ -508,12 +491,116 @@ export default async function handler(
 
 
     /*
-     * ============================
-     * DATA UNTUK SUPABASE
-     * ============================
+     * ==========================
+     * DATA UPDATE
+     * ==========================
      */
 
-    const row = {
+    const updateData = {
+
+      status,
+
+      note,
+
+      photo,
+
+      updated_at:
+        new Date().toISOString()
+
+    };
+
+
+    /*
+     * ==========================
+     * CEK APAKAH SUDAH ADA
+     * ==========================
+     *
+     * Tidak menggunakan ON CONFLICT.
+     */
+
+    const existing =
+      await supabase(
+
+        `${TABLE}?select=id,row_number,customer_name,status,note,photo,updated_at&row_number=eq.${encodeURIComponent(rowNumber)}&customer_name=eq.${encodeURIComponent(customerName)}`,
+
+        {
+          method:'GET'
+        }
+
+      );
+
+
+    /*
+     * ==========================
+     * UPDATE DATA LAMA
+     * ==========================
+     */
+
+    if (
+      Array.isArray(existing) &&
+      existing.length
+    ) {
+
+      const first =
+        existing[0];
+
+
+      const updated =
+        await supabase(
+
+          `${TABLE}?id=eq.${encodeURIComponent(first.id)}`,
+
+          {
+            method:'PATCH',
+
+            headers:{
+              Prefer:
+                'return=representation'
+            },
+
+            body:
+              JSON.stringify(
+                updateData
+              )
+
+          }
+
+        );
+
+
+      return res
+        .status(200)
+        .json({
+
+          success:true,
+
+          action:'updated',
+
+          update:
+            Array.isArray(updated)
+              ? updated[0] ||
+                {
+                  ...first,
+                  ...updateData
+                }
+              :
+                {
+                  ...first,
+                  ...updateData
+                }
+
+        });
+
+    }
+
+
+    /*
+     * ==========================
+     * INSERT DATA BARU
+     * ==========================
+     */
+
+    const newRow = {
 
       id:
         Number(body.id) ||
@@ -525,14 +612,11 @@ export default async function handler(
       customer_name:
         customerName,
 
-      status:
-        status,
+      status,
 
-      note:
-        note,
+      note,
 
-      photo:
-        photo,
+      photo,
 
       updated_at:
         new Date().toISOString()
@@ -540,44 +624,25 @@ export default async function handler(
     };
 
 
-    /*
-     * ============================
-     * UPSERT
-     * ============================
-     *
-     * row_number pada tabel sekarang
-     * dibuat UNIQUE.
-     */
-
-    const data =
+    const inserted =
       await supabase(
-
-        `${TABLE}?on_conflict=row_number`,
-
+        TABLE,
         {
-
           method:'POST',
 
           headers:{
-
             Prefer:
-              'resolution=merge-duplicates,return=representation'
-
+              'return=representation'
           },
 
           body:
-            JSON.stringify(row)
+            JSON.stringify(
+              newRow
+            )
 
         }
-
       );
 
-
-    /*
-     * ============================
-     * RESPONSE
-     * ============================
-     */
 
     return res
       .status(200)
@@ -585,10 +650,14 @@ export default async function handler(
 
         success:true,
 
+        action:'inserted',
+
         update:
-          Array.isArray(data)
-            ? data[0] || row
-            : data || row
+          Array.isArray(inserted)
+            ? inserted[0] ||
+              newRow
+            : inserted ||
+              newRow
 
       });
 
