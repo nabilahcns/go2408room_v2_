@@ -15,11 +15,31 @@ function clean(value) {
 }
 
 
+function parseBody(req) {
+
+  if (!req.body) {
+    return {};
+  }
+
+  if (
+    typeof req.body === 'object'
+  ) {
+    return req.body;
+  }
+
+  try {
+    return JSON.parse(req.body);
+  } catch {
+    return {};
+  }
+}
+
+
 function safeFilename(filename) {
 
   const original =
-    clean(filename) ||
-    'file';
+    clean(filename) || 'file';
+
 
   const extension =
     original.includes('.')
@@ -33,6 +53,7 @@ function safeFilename(filename) {
             ''
           )
       : '';
+
 
   const base =
     original
@@ -50,68 +71,45 @@ function safeFilename(filename) {
   return (
     base ||
     'file'
-  ) +
-  extension;
+  ) + extension;
 
 }
 
 
-function parseBody(req) {
+function getFolder(value) {
 
-  if (!req.body) {
-    return {};
-  }
+  const folder =
+    clean(value)
+      .toLowerCase();
 
-  if (
-    typeof req.body ===
-    'object'
-  ) {
-    return req.body;
-  }
 
-  try {
+  const allowed = {
+    batch: 'batch',
+    album: 'album',
+    status: 'status',
+    admin: 'admin'
+  };
 
-    return JSON.parse(
-      req.body
-    );
 
-  } catch {
-
-    return {};
-
-  }
+  return (
+    allowed[folder] ||
+    'admin'
+  );
 
 }
 
-
-/*
- * Supabase signed upload URL
- *
- * Endpoint:
- *
- * POST
- * /storage/v1/object/upload/sign/{bucket}/{path}
- *
- * Response biasanya berisi:
- *
- * {
- *   signedURL: "..."
- * }
- *
- * atau signedUrl.
- */
 
 async function createSignedUploadUrl(
   path
 ) {
 
-  const url =
+  const endpoint =
     `${SUPABASE_URL}/storage/v1/object/upload/sign/${BUCKET}/${encodeURIComponent(path)}`;
 
 
   const response =
     await fetch(
-      url,
+      endpoint,
       {
         method: 'POST',
 
@@ -133,38 +131,34 @@ async function createSignedUploadUrl(
     await response.text();
 
 
-  let data = null;
+  let data = {};
 
 
-  if (text) {
+  try {
 
-    try {
+    data =
+      text
+        ? JSON.parse(text)
+        : {};
 
-      data =
-        JSON.parse(
-          text
-        );
+  } catch {
 
-    } catch {
-
-      data =
-        {
-          raw:
-            text
-        };
-
-    }
+    data = {};
 
   }
 
 
   if (!response.ok) {
 
+    console.error(
+      'Supabase upload error:',
+      response.status,
+      data
+    );
+
+
     throw new Error(
-      data?.message ||
-      data?.error ||
-      data?.statusCode ||
-      `Supabase upload gagal (${response.status}).`
+      'Penyimpanan file sedang bermasalah.'
     );
 
   }
@@ -179,18 +173,16 @@ async function createSignedUploadUrl(
   if (!signed) {
 
     throw new Error(
-      'Supabase tidak memberikan signed upload URL.'
+      'URL upload tidak tersedia.'
     );
 
   }
 
 
-  return (
-    String(signed)
-      .startsWith('http')
-      ? signed
-      : `${SUPABASE_URL}${signed}`
-  );
+  return String(signed)
+    .startsWith('http')
+    ? signed
+    : `${SUPABASE_URL}${signed}`;
 
 }
 
@@ -203,15 +195,34 @@ export default async function handler(
   try {
 
     if (
-      req.method !==
-      'POST'
+      req.method !== 'POST'
     ) {
 
       return res
         .status(405)
         .json({
           error:
-            'Method not allowed'
+            'Method not allowed.'
+        });
+
+    }
+
+
+    /*
+     * Upload melalui endpoint ini
+     * hanya untuk Admin.
+     *
+     * Customer menggunakan:
+     * /api/payment-proof
+     */
+
+    if (!isAdmin(req)) {
+
+      return res
+        .status(401)
+        .json({
+          error:
+            'Unauthorized'
         });
 
     }
@@ -222,35 +233,16 @@ export default async function handler(
       !SUPABASE_SECRET_KEY
     ) {
 
+      console.error(
+        'Supabase storage environment belum lengkap.'
+      );
+
+
       return res
         .status(500)
         .json({
           error:
-            'SUPABASE_URL atau SUPABASE_SECRET_KEY belum diatur di Vercel.'
-        });
-
-    }
-
-
-    /*
-     * Security:
-     *
-     * Default-nya hanya Admin.
-     *
-     * Customer bukti pembayaran
-     * ditangani lewat
-     * /api/payment-proof
-     * agar customer tidak bisa
-     * sembarang memilih path.
-     */
-
-    if (!isAdmin(req)) {
-
-      return res
-        .status(401)
-        .json({
-          error:
-            'Unauthorized'
+            'Fitur upload sedang tidak tersedia.'
         });
 
     }
@@ -272,28 +264,10 @@ export default async function handler(
         .status(400)
         .json({
           error:
-            'Filename wajib diisi.'
+            'Nama file wajib diisi.'
         });
 
     }
-
-
-    /*
-     * Batasi file yang boleh
-     * diupload Admin.
-     *
-     * Fokus utama website:
-     * JPG / JPEG / PNG / WEBP / GIF.
-     */
-
-    const allowed =
-      new Set([
-        '.jpg',
-        '.jpeg',
-        '.png',
-        '.webp',
-        '.gif'
-      ]);
 
 
     const safe =
@@ -301,6 +275,11 @@ export default async function handler(
         filename
       );
 
+
+    /*
+     * Hanya gambar yang dibutuhkan
+     * website yang diperbolehkan.
+     */
 
     const extension =
       safe.includes('.')
@@ -312,8 +291,18 @@ export default async function handler(
         : '';
 
 
+    const allowedExtensions =
+      new Set([
+        '.jpg',
+        '.jpeg',
+        '.png',
+        '.webp',
+        '.gif'
+      ]);
+
+
     if (
-      !allowed.has(
+      !allowedExtensions.has(
         extension
       )
     ) {
@@ -322,43 +311,30 @@ export default async function handler(
         .status(400)
         .json({
           error:
-            'Format file tidak didukung. Gunakan JPG, JPEG, PNG, WEBP, atau GIF.'
+            'Format foto belum didukung. Gunakan JPG, JPEG, PNG, WEBP, atau GIF.'
         });
 
     }
 
 
     /*
-     * Path dipisahkan berdasarkan
-     * jenis file supaya Storage
-     * lebih rapi.
+     * Folder bisa dikirim dari Admin.
+     *
+     * Contoh:
+     *
+     * folder=batch
+     * folder=album
+     * folder=status
      */
 
     const folder =
-      clean(
+      getFolder(
         body.folder
-      ) || 'admin';
-
-
-    const safeFolder =
-      folder
-        .replace(
-          /[^a-zA-Z0-9/_-]/g,
-          ''
-        )
-        .replace(
-          /^\/+|\/+$/g,
-          ''
-        );
-
-
-    const cleanFolder =
-      safeFolder ||
-      'admin';
+      );
 
 
     const path =
-      `${cleanFolder}/${Date.now()}_${safe}`;
+      `${folder}/${Date.now()}_${safe}`;
 
 
     const signedUrl =
@@ -373,10 +349,12 @@ export default async function handler(
 
         success: true,
 
-        path,
-
         bucket:
           BUCKET,
+
+        path,
+
+        folder,
 
         signedUrl
 
@@ -395,8 +373,7 @@ export default async function handler(
       .status(500)
       .json({
         error:
-          error?.message ||
-          'Upload file gagal.'
+          'Foto belum berhasil disiapkan untuk upload. Silakan coba lagi.'
       });
 
   }
